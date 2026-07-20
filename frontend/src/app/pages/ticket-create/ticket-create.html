@@ -1,0 +1,14 @@
+<a class="back" routerLink="/tickets">← Volver a tickets</a>
+<section class="page-heading"><p class="eyebrow">NUEVA INCIDENCIA</p><h1>Crear ticket</h1><p>Registrá el contexto completo para que el equipo pueda actuar y documentar.</p></section>
+@if (cargando()) { <div class="form-card loading">Cargando catálogos…</div> }
+@else {
+  <form class="form-card" [formGroup]="form" (ngSubmit)="guardar()">
+    <div class="section-title"><span>01</span><div><h2>¿Qué está ocurriendo?</h2><p>Describí el síntoma observado, sin anticipar la solución.</p></div></div>
+    <label>Título del caso<input formControlName="titulo" placeholder="Ej.: POS no inicia luego de una actualización"></label>
+    <label>Descripción<textarea formControlName="descripcion" rows="5" placeholder="Indicá qué sucede, desde cuándo y cómo afecta a la operación."></textarea></label>
+    <div class="section-title"><span>02</span><div><h2>Contexto operativo</h2><p>Asociá el caso con el local y la clasificación correcta.</p></div></div>
+    <div class="form-grid"><label>Sucursal<select formControlName="sucursal"><option value="">Seleccionar sucursal</option>@for(s of sucursales();track s.id){<option [value]="s.id">{{ s.codigo }} · {{ s.nombre }}</option>}</select></label><label>Origen<select formControlName="origen"><option value="TECNICO">Creado por técnico</option><option value="WHATSAPP">WhatsApp</option><option value="LLAMADA">Llamada</option><option value="CORREO">Correo</option><option value="PRESENCIAL">Presencial</option><option value="PORTAL_SUCURSAL">Portal de sucursal</option></select></label><label>Categoría<select formControlName="categoria" (change)="cargarSubcategorias()"><option value="">Seleccionar categoría</option>@for(c of categorias();track c.id){<option [value]="c.id">{{ c.nombre }}</option>}</select></label><label>Subcategoría<select formControlName="subcategoria"><option value="">Sin subcategoría</option>@for(s of subcategorias();track s.id){<option [value]="s.id">{{ s.nombre }}</option>}</select></label></div>
+    @if(error()){<p class="error">{{ error() }}</p>}
+    <div class="actions"><a routerLink="/tickets">Cancelar</a><button class="primary-button" type="submit" [disabled]="form.invalid || guardando()">{{ guardando() ? 'Creando…' : 'Crear ticket' }}</button></div>
+  </form>
+}

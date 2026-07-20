@@ -6,18 +6,21 @@ from .models import Usuario
 
 @admin.register(Usuario)
 class UsuarioAdmin(UserAdmin):
+
     list_display = (
         "username",
         "first_name",
         "last_name",
         "email",
         "rol",
+        "sucursal",
         "activo_operativamente",
         "is_staff",
     )
 
     list_filter = (
         "rol",
+        "sucursal",
         "activo_operativamente",
         "is_staff",
         "is_active",
@@ -28,6 +31,14 @@ class UsuarioAdmin(UserAdmin):
         "first_name",
         "last_name",
         "email",
+        "sucursal__codigo",
+        "sucursal__nombre",
+    )
+
+    filter_horizontal = (
+        "groups",
+        "user_permissions",
+        "sucursales_asignadas",
     )
 
     fieldsets = UserAdmin.fieldsets + (
@@ -38,6 +49,8 @@ class UsuarioAdmin(UserAdmin):
                     "rol",
                     "telefono",
                     "activo_operativamente",
+                    "sucursal",
+                    "sucursales_asignadas",
                     "fecha_creacion",
                 )
             },
@@ -58,6 +71,8 @@ class UsuarioAdmin(UserAdmin):
                     "rol",
                     "telefono",
                     "activo_operativamente",
+                    "sucursal",
+                    "sucursales_asignadas",
                 )
             },
         ),

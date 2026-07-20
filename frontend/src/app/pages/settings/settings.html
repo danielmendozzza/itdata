@@ -1,0 +1,30 @@
+<section class="page-heading">
+  <div><p class="eyebrow">ADMINISTRACIÓN</p><h1>Configuraciones</h1><p>Gestioná accesos, roles y alcance operativo de los usuarios.</p></div>
+  <button class="primary-button" (click)="nuevo()">+ Crear usuario</button>
+</section>
+
+<section class="toolbar"><div>⌕<input [(ngModel)]="search" (keyup.enter)="cargar()" placeholder="Buscar nombre, usuario o correo"></div><button (click)="cargar()">Buscar</button></section>
+
+<section class="users-card">
+  @if (cargando()) { <div class="empty">Cargando usuarios…</div> }
+  @else { <div class="table-wrap"><table><thead><tr><th>Usuario</th><th>Rol</th><th>Sucursal</th><th>Estado</th><th>Acciones</th></tr></thead><tbody>
+    @for (usuario of usuarios(); track usuario.id) {
+      <tr><td><div class="user-cell"><span>{{ usuario.nombre_completo.slice(0,2).toUpperCase() }}</span><div><strong>{{ usuario.nombre_completo }}</strong><small>{{ usuario.username }} · {{ usuario.email || 'Sin correo' }}</small></div></div></td><td><span class="role">{{ textoRol(usuario.rol) }}</span></td><td>{{ usuario.sucursal_nombre || (usuario.sucursales_asignadas.length ? usuario.sucursales_asignadas.length + ' asignadas' : '—') }}</td><td><span [class]="usuario.is_active && usuario.activo_operativamente ? 'active-state' : 'inactive-state'">{{ usuario.is_active && usuario.activo_operativamente ? 'Activo' : 'Inactivo' }}</span></td><td><div class="row-actions"><button (click)="editar(usuario)">Editar</button><button class="danger" (click)="desactivar(usuario)" [disabled]="!usuario.is_active">Desactivar</button></div></td></tr>
+    } @empty { <tr><td colspan="5" class="empty">No hay usuarios para mostrar.</td></tr> }
+  </tbody></table></div> }
+</section>
+
+@if (formularioVisible()) {
+  <div class="modal-backdrop" (click)="formularioVisible.set(false)">
+    <form class="user-form" [formGroup]="form" (ngSubmit)="guardar()" (click)="$event.stopPropagation()">
+      <div class="form-header"><div><p class="eyebrow">{{ editandoId() ? 'EDITAR ACCESO' : 'NUEVO ACCESO' }}</p><h2>{{ editandoId() ? 'Editar usuario' : 'Crear usuario' }}</h2></div><button type="button" (click)="formularioVisible.set(false)">×</button></div>
+      <div class="form-grid"><label>Nombre<input formControlName="first_name"></label><label>Apellido<input formControlName="last_name"></label><label>Usuario<input formControlName="username"></label><label>{{ editandoId() ? 'Nueva contraseña (opcional)' : 'Contraseña' }}<input type="password" formControlName="password" placeholder="Mínimo 8 caracteres"></label><label>Correo<input type="email" formControlName="email"></label><label>Teléfono<input formControlName="telefono"></label><label>Rol<select formControlName="rol">@for (rol of rolesDisponibles; track rol.value) { <option [value]="rol.value">{{ rol.label }}</option> }</select></label>
+        @if (form.controls.rol.value === 'SUCURSAL') { <label>Sucursal<select formControlName="sucursal"><option value="">Seleccionar</option>@for(s of sucursales();track s.id){<option [value]="s.id">{{ s.codigo }} · {{ s.nombre }}</option>}</select></label> }
+        @if (form.controls.rol.value === 'JDISTRITO') { <label class="wide">Sucursales asignadas<select formControlName="sucursales_asignadas" multiple size="5">@for(s of sucursales();track s.id){<option [value]="s.id">{{ s.codigo }} · {{ s.nombre }}</option>}</select><small>Usá Ctrl para seleccionar varias.</small></label> }
+      </div>
+      <div class="toggles"><label><input type="checkbox" formControlName="is_active"> Acceso habilitado</label><label><input type="checkbox" formControlName="activo_operativamente"> Activo operativamente</label></div>
+      @if (error()) { <p class="error">{{ error() }}</p> }
+      <div class="form-actions"><button type="button" (click)="formularioVisible.set(false)">Cancelar</button><button class="primary-button" type="submit" [disabled]="form.invalid || guardando()">{{ guardando() ? 'Guardando…' : 'Guardar usuario' }}</button></div>
+    </form>
+  </div>
+}

@@ -1,5 +1,9 @@
+from pathlib import Path
+import uuid
+
 from django.conf import settings
 from django.core.exceptions import ValidationError
+from django.core.validators import FileExtensionValidator
 from django.db import models
 from django.utils import timezone
 
@@ -328,6 +332,7 @@ class HistorialTicket(ModeloBase):
         CAMBIO_PRIORIDAD = "CAMBIO_PRIORIDAD", "Cambio de prioridad"
         CAMBIO_RESPONSABLE = "CAMBIO_RESPONSABLE", "Cambio de responsable"
         COMENTARIO = "COMENTARIO", "Comentario"
+        ADJUNTO = "ADJUNTO", "Archivo adjunto"
         RESOLUCION = "RESOLUCION", "Resolución"
         CIERRE = "CIERRE", "Cierre"
 
@@ -390,3 +395,84 @@ class HistorialTicket(ModeloBase):
             f"{self.ticket.codigo} - "
             f"{self.get_tipo_movimiento_display()}"
         )
+
+
+class ComentarioTicket(ModeloBase):
+    class Tipo(models.TextChoices):
+        NOTA = "NOTA", "Nota"
+        DIAGNOSTICO = "DIAGNOSTICO", "Diagnóstico"
+        ACCION_REALIZADA = "ACCION_REALIZADA", "Acción realizada"
+        RESPUESTA_USUARIO = "RESPUESTA_USUARIO", "Respuesta del usuario"
+
+    ticket = models.ForeignKey(
+        Ticket, on_delete=models.CASCADE, related_name="comentarios"
+    )
+    autor = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.PROTECT,
+        related_name="comentarios_tickets",
+    )
+    tipo = models.CharField(max_length=30, choices=Tipo.choices, default=Tipo.NOTA)
+    texto = models.TextField()
+
+    class Meta:
+        verbose_name = "Comentario de ticket"
+        verbose_name_plural = "Comentarios de tickets"
+        ordering = ("fecha_creacion",)
+
+    def __str__(self):
+        return f"{self.ticket.codigo} - {self.get_tipo_display()}"
+
+
+def validar_tamano_adjunto(archivo):
+    limite = 10 * 1024 * 1024
+    if archivo.size > limite:
+        raise ValidationError("El archivo no puede superar los 10 MB.")
+
+
+def ruta_adjunto_ticket(instancia, nombre_archivo):
+    nombre_seguro = Path(nombre_archivo).name
+    return (
+        f"tickets/{instancia.ticket_id}/adjuntos/"
+        f"{uuid.uuid4().hex}_{nombre_seguro}"
+    )
+
+
+class AdjuntoTicket(ModeloBase):
+    EXTENSIONES_PERMITIDAS = (
+        "pdf",
+        "png",
+        "jpg",
+        "jpeg",
+        "txt",
+        "log",
+        "csv",
+        "docx",
+        "xlsx",
+    )
+
+    ticket = models.ForeignKey(
+        Ticket, on_delete=models.CASCADE, related_name="adjuntos"
+    )
+    subido_por = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.PROTECT,
+        related_name="adjuntos_tickets",
+    )
+    archivo = models.FileField(
+        upload_to=ruta_adjunto_ticket,
+        validators=(
+            FileExtensionValidator(allowed_extensions=EXTENSIONES_PERMITIDAS),
+            validar_tamano_adjunto,
+        ),
+    )
+    nombre_original = models.CharField(max_length=255)
+    descripcion = models.CharField(max_length=250, blank=True)
+
+    class Meta:
+        verbose_name = "Adjunto de ticket"
+        verbose_name_plural = "Adjuntos de tickets"
+        ordering = ("fecha_creacion",)
+
+    def __str__(self):
+        return f"{self.ticket.codigo} - {self.nombre_original}"

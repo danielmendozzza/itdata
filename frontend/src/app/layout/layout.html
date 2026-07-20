@@ -1,0 +1,35 @@
+<div class="app-shell">
+  <aside class="sidebar" [class.open]="menuAbierto()">
+    <a class="logo" routerLink="/dashboard" (click)="menuAbierto.set(false)">
+      <span>IT</span><strong>ITDATA</strong>
+    </a>
+    <p class="nav-label">OPERACIONES</p>
+    <nav>
+      <a routerLink="/dashboard" routerLinkActive="active" (click)="menuAbierto.set(false)"><i>⌂</i> Dashboard</a>
+      <a routerLink="/tickets" routerLinkActive="active" (click)="menuAbierto.set(false)"><i>▤</i> Tickets</a>
+      <a routerLink="/conocimiento" routerLinkActive="active" (click)="menuAbierto.set(false)"><i>◇</i> Base de conocimiento</a>
+      @if (auth.puedeConfigurar()) {
+        <a routerLink="/configuracion" routerLinkActive="active" (click)="menuAbierto.set(false)"><i>⚙</i> Configuraciones</a>
+      }
+    </nav>
+    <div class="sidebar-note">
+      <span>MEMORIA TÉCNICA</span>
+      <p>Documentá hoy lo que el equipo necesitará mañana.</p>
+    </div>
+    <button class="logout" (click)="auth.cerrarSesion()">↪ Cerrar sesión</button>
+  </aside>
+
+  <section class="main-area">
+    <header class="topbar">
+      <button class="menu-toggle" (click)="menuAbierto.set(!menuAbierto())">☰</button>
+      <div class="topbar-title"><span class="status-dot"></span> Sistema operativo</div>
+      @if (auth.usuario(); as usuario) {
+        <div class="user-box">
+          <span class="avatar">{{ usuario.nombre_completo.slice(0, 2).toUpperCase() }}</span>
+          <div><strong>{{ usuario.nombre_completo }}</strong><small>{{ usuario.rol }}</small></div>
+        </div>
+      }
+    </header>
+    <main class="content"><router-outlet /></main>
+  </section>
+</div>

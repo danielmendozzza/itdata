@@ -1,0 +1,37 @@
+<section class="page-heading">
+  <div>
+    <p class="eyebrow">{{ auth.esRolGlobal() ? 'PANORAMA GLOBAL' : 'MI OPERACIÓN' }}</p>
+    <h1>Buen día, {{ auth.usuario()?.first_name || auth.usuario()?.username }}</h1>
+    <p>Resumen de la actividad de soporte y documentación técnica.</p>
+  </div>
+  <div class="date-chip">{{ hoy | date:'EEEE, d MMMM':'':'es' }}</div>
+</section>
+
+@if (cargando()) {
+  <div class="loading-card">Cargando indicadores…</div>
+} @else if (datos(); as d) {
+  <section class="stats-grid">
+    <article class="stat-card primary"><span>ACTIVOS</span><strong>{{ d.tickets_abiertos ?? d.tickets_activos ?? 0 }}</strong><small>Requieren seguimiento</small></article>
+    <article class="stat-card"><span>EN PROCESO</span><strong>{{ d.tickets_en_proceso ?? 0 }}</strong><small>Atención en curso</small></article>
+    <article class="stat-card"><span>RESUELTOS</span><strong>{{ d.tickets_resueltos }}</strong><small>Con solución documentada</small></article>
+    @if (auth.esRolGlobal()) { <article class="stat-card"><span>CERRADOS</span><strong>{{ d.tickets_cerrados ?? 0 }}</strong><small>Casos finalizados</small></article> }
+  </section>
+
+  <section class="dashboard-grid">
+    <article class="panel">
+      <div class="panel-header"><div><span class="eyebrow">DISTRIBUCIÓN</span><h2>Tickets por estado</h2></div><a routerLink="/tickets">Ver tickets →</a></div>
+      <div class="state-list">
+        @for (item of d.por_estado; track item.estado) {
+          <div><span class="state-name"><i></i>{{ etiqueta(item.estado) }}</span><strong>{{ item.total }}</strong></div>
+        } @empty { <p class="empty">Todavía no hay tickets para mostrar.</p> }
+      </div>
+    </article>
+    <article class="panel knowledge-callout">
+      <span class="callout-icon">◇</span>
+      <p class="eyebrow">CONOCIMIENTO COMPARTIDO</p>
+      <h2>Una solución documentada evita investigar dos veces.</h2>
+      <p>Consultá diagnósticos y procedimientos publicados por el equipo.</p>
+      <a class="secondary-button" routerLink="/conocimiento">Explorar conocimiento</a>
+    </article>
+  </section>
+}

@@ -17,10 +17,6 @@ from decouple import config
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 
-# Quick-start development settings - unsuitable for production
-# See https://docs.djangoproject.com/en/6.0/howto/deployment/checklist/
-
-# SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = 'django-insecure-du3&fgh^j=&p24r%-c39)&$gp#@@vx!vkmc0a_eq7*12nhh$hf'
 
 # SECURITY WARNING: don't run with debug turned on in production!
@@ -38,16 +34,21 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'corsheaders',
     'rest_framework',
+    'drf_spectacular',
+    'django_filters',
     'core',
     'usuarios',
     'organizacion',
     'inventario',
     'operacion',
+    'conocimiento',
 ]
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
+    "corsheaders.middleware.CorsMiddleware",
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -90,6 +91,15 @@ DATABASES = {
     }
 }
 
+# Allow using SQLite in CI or local dev by setting USE_SQLITE=True
+if config("USE_SQLITE", default=False, cast=bool):
+    DATABASES = {
+        "default": {
+            "ENGINE": "django.db.backends.sqlite3",
+            "NAME": BASE_DIR / "db.sqlite3",
+        }
+    }
+
 
 # Password validation
 # https://docs.djangoproject.com/en/6.0/ref/settings/#auth-password-validators
@@ -110,8 +120,6 @@ AUTH_PASSWORD_VALIDATORS = [
 ]
 
 
-# Internationalization
-# https://docs.djangoproject.com/en/6.0/topics/i18n/
 
 LANGUAGE_CODE = "es"
 
@@ -121,9 +129,66 @@ USE_I18N = True
 
 USE_TZ = True
 
-
-# Static files (CSS, JavaScript, Images)
-# https://docs.djangoproject.com/en/6.0/howto/static-files/
-
 STATIC_URL = 'static/'
+MEDIA_URL = "media/"
+MEDIA_ROOT = BASE_DIR / "media"
 AUTH_USER_MODEL = "usuarios.Usuario"
+
+REST_FRAMEWORK = {
+    "DEFAULT_AUTHENTICATION_CLASSES": (
+        "rest_framework_simplejwt.authentication.JWTAuthentication",
+    ),
+
+    "DEFAULT_PERMISSION_CLASSES": (
+        "rest_framework.permissions.IsAuthenticated",
+    ),
+
+    "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
+
+    "DEFAULT_FILTER_BACKENDS": (
+        "django_filters.rest_framework.DjangoFilterBackend",
+        "rest_framework.filters.SearchFilter",
+        "rest_framework.filters.OrderingFilter",
+    ),
+
+    "DEFAULT_PAGINATION_CLASS": (
+        "core.api.pagination.PaginacionEstandar"
+    ),
+}
+
+SPECTACULAR_SETTINGS = {
+    "TITLE": "ITDATA API",
+    "DESCRIPTION": "API REST para la gestión operativa del área de TI.",
+    "VERSION": "1.0.0",
+    "SERVE_INCLUDE_SCHEMA": False,
+    "ENUM_NAME_OVERRIDES": {
+        "TicketEstadoEnum": [
+            ("NUEVO", "Nuevo"),
+            ("ASIGNADO", "Asignado"),
+            ("EN_PROCESO", "En proceso"),
+            ("ESPERANDO_USUARIO", "Esperando usuario"),
+            ("ESPERANDO_PROVEEDOR", "Esperando proveedor"),
+            ("ESPERANDO_OTRA_AREA", "Esperando otra área"),
+            ("EN_PRUEBAS", "En pruebas"),
+            ("RESUELTO", "Resuelto"),
+            ("CERRADO", "Cerrado"),
+            ("CANCELADO", "Cancelado"),
+        ],
+        "ActivoEstadoEnum": [
+            ("OPERATIVO", "Operativo"),
+            ("EN_REPARACION", "En reparación"),
+            ("FUERA_SERVICIO", "Fuera de servicio"),
+            ("BAJA", "Baja"),
+        ],
+        "ArticuloConocimientoEstadoEnum": [
+            ("BORRADOR", "Borrador"),
+            ("EN_REVISION", "En revisión"),
+            ("PUBLICADO", "Publicado"),
+            ("ARCHIVADO", "Archivado"),
+        ],
+    },
+}
+
+CORS_ALLOWED_ORIGINS = [
+    "http://localhost:4200",
+]

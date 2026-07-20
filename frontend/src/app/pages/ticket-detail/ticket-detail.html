@@ -1,0 +1,18 @@
+<a class="back" routerLink="/tickets">← Volver a tickets</a>
+@if (cargando()) { <div class="loading">Cargando expediente…</div> }
+@else if (ticket(); as t) {
+  <section class="ticket-header"><div><div class="header-meta"><span>{{ t.codigo }}</span><span class="status">{{ texto(t.estado) }}</span></div><h1>{{ t.titulo }}</h1><p>{{ t.descripcion }}</p></div><div class="header-side"><small>PRIORIDAD</small><strong>{{ t.prioridad_final }}</strong></div></section>
+  <section class="detail-grid">
+    <div class="main-column">
+      <article class="panel"><div class="panel-title"><div><p class="eyebrow">BITÁCORA TÉCNICA</p><h2>Documentación del caso</h2></div><span>{{ t.comentarios.length }} registros</span></div>
+        <div class="comment-form"><select [(ngModel)]="tipoComentario"><option value="NOTA">Nota</option><option value="DIAGNOSTICO">Diagnóstico</option><option value="ACCION_REALIZADA">Acción realizada</option><option value="RESPUESTA_USUARIO">Respuesta del usuario</option></select><textarea [(ngModel)]="comentario" rows="3" placeholder="Documentá el diagnóstico, la acción o un dato relevante…"></textarea><button class="primary-button" (click)="guardarComentario()" [disabled]="guardando()">{{ guardando() ? 'Guardando…' : 'Agregar a la bitácora' }}</button></div>
+        <div class="timeline">
+          @for (item of t.comentarios; track item.id) { <div class="timeline-item"><i></i><div><div class="timeline-meta"><strong>{{ texto(item.tipo) }}</strong><span>{{ item.fecha_creacion | date:'dd/MM/yyyy HH:mm' }}</span></div><p>{{ item.texto }}</p><small>Por {{ item.autor }}</small></div></div> }
+          @empty { <p class="empty">Aún no hay documentación técnica. Agregá el primer diagnóstico.</p> }
+        </div>
+      </article>
+      <article class="panel"><div class="panel-title"><div><p class="eyebrow">TRAZABILIDAD</p><h2>Historial de movimientos</h2></div></div><div class="history-list">@for (mov of t.historial; track mov.id) { <div><span>{{ mov.fecha_creacion | date:'dd/MM HH:mm' }}</span><p><strong>{{ texto(mov.tipo_movimiento) }}</strong> · {{ mov.comentario }}</p><small>{{ mov.usuario }}</small></div> }</div></article>
+    </div>
+    <aside class="side-column"><article class="panel info-card"><p class="eyebrow">INFORMACIÓN</p><dl><div><dt>Sucursal</dt><dd>{{ t.sucursal }}</dd></div><div><dt>Activo</dt><dd>{{ t.activo || 'Sin activo asociado' }}</dd></div><div><dt>Responsable actual</dt><dd>{{ texto(t.responsable_actual) }}</dd></div><div><dt>Creado por</dt><dd>{{ t.creado_por }}</dd></div><div><dt>Fecha de creación</dt><dd>{{ t.fecha_creacion | date:'dd/MM/yyyy HH:mm' }}</dd></div></dl></article><article class="panel solution"><p class="eyebrow">SOLUCIÓN</p><p>{{ t.solucion || 'La solución aparecerá aquí cuando el caso sea resuelto.' }}</p></article><article class="panel"><p class="eyebrow">EVIDENCIAS</p><div class="files">@for (file of t.adjuntos; track file.id) { <a [href]="file.archivo" target="_blank">▧ {{ file.nombre_original }}</a> } @empty { <p>Sin archivos adjuntos.</p> }</div></article></aside>
+  </section>
+}

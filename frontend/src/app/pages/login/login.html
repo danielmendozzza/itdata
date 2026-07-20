@@ -1,0 +1,34 @@
+<main class="login-shell">
+  <section class="brand-panel">
+    <div class="brand-mark">IT</div>
+    <div>
+      <p class="eyebrow">CENTRO DE OPERACIONES TI</p>
+      <h1>Programa de documentación TI,<br></h1>
+      <p class="brand-copy">
+        Incidencias, evidencias, soluciones y documentación técnica.
+      </p>
+    </div>
+    <div class="brand-footer"><span></span> ITDATA · QSR S.A</div>
+  </section>
+
+  <section class="form-panel">
+    <form class="login-card" [formGroup]="form" (ngSubmit)="ingresar()">
+      <div class="mobile-brand"><span>IT</span> ITDATA</div>
+      <p class="eyebrow">BIENVENIDO</p>
+      <h2>Iniciá sesión</h2>
+      <p class="hint">Ingresá con tus credenciales corporativas.</p>
+
+      <label for="username">Usuario</label>
+      <input id="username" formControlName="username" autocomplete="username" placeholder="Tu usuario">
+
+      <label for="password">Contraseña</label>
+      <input id="password" type="password" formControlName="password" autocomplete="current-password" placeholder="••••••••">
+
+      @if (error()) { <p class="error-message">{{ error() }}</p> }
+
+      <button class="primary-button" type="submit" [disabled]="form.invalid || cargando()">
+        {{ cargando() ? 'Ingresando…' : 'Ingresar a ITDATA' }}
+      </button>
+    </form>
+  </section>
+</main>

@@ -1,11 +1,14 @@
 from django.contrib import admin
 
 from .models import (
+    AdjuntoTicket,
     Categoria,
+    ComentarioTicket,
     HistorialTicket,
     Subcategoria,
     Ticket,
 )
+from .services import crear_movimiento_historial
 
 
 @admin.register(Categoria)
@@ -73,6 +76,30 @@ class HistorialTicketInline(admin.TabularInline):
     )
 
 
+class ComentarioTicketInline(admin.TabularInline):
+    model = ComentarioTicket
+    extra = 0
+    can_delete = False
+    fields = ("fecha_creacion", "tipo", "autor", "texto")
+    readonly_fields = fields
+    ordering = ("fecha_creacion",)
+
+
+class AdjuntoTicketInline(admin.TabularInline):
+    model = AdjuntoTicket
+    extra = 0
+    can_delete = False
+    fields = (
+        "fecha_creacion",
+        "nombre_original",
+        "descripcion",
+        "subido_por",
+        "archivo",
+    )
+    readonly_fields = fields
+    ordering = ("fecha_creacion",)
+
+
 @admin.register(Ticket)
 class TicketAdmin(admin.ModelAdmin):
     list_display = (
@@ -131,6 +158,8 @@ class TicketAdmin(admin.ModelAdmin):
 
     inlines = (
         HistorialTicketInline,
+        ComentarioTicketInline,
+        AdjuntoTicketInline,
     )
 
     fieldsets = (
@@ -223,7 +252,7 @@ class TicketAdmin(admin.ModelAdmin):
         )
 
         if es_nuevo:
-            HistorialTicket.objects.create(
+            crear_movimiento_historial(
                 ticket=obj,
                 usuario=request.user,
                 tipo_movimiento=HistorialTicket.TipoMovimiento.CREACION,
@@ -236,7 +265,7 @@ class TicketAdmin(admin.ModelAdmin):
             return
 
         if estado_anterior != obj.estado:
-            HistorialTicket.objects.create(
+            crear_movimiento_historial(
                 ticket=obj,
                 usuario=request.user,
                 tipo_movimiento=(
@@ -251,7 +280,7 @@ class TicketAdmin(admin.ModelAdmin):
             )
 
         if prioridad_anterior != obj.prioridad_final:
-            HistorialTicket.objects.create(
+            crear_movimiento_historial(
                 ticket=obj,
                 usuario=request.user,
                 tipo_movimiento=(
@@ -266,7 +295,7 @@ class TicketAdmin(admin.ModelAdmin):
             )
 
         if responsable_anterior != obj.responsable_actual:
-            HistorialTicket.objects.create(
+            crear_movimiento_historial(
                 ticket=obj,
                 usuario=request.user,
                 tipo_movimiento=(
