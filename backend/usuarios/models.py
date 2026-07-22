@@ -23,7 +23,7 @@ class Usuario(AbstractUser):
     rol = models.CharField(
         max_length=20,
         choices=Rol.choices,
-        default=Rol.SUCURSAL,
+        default=Rol.CONSULTOR,
     )
 
     telefono = models.CharField(
@@ -61,9 +61,22 @@ class Usuario(AbstractUser):
     def __str__(self):
         return self.username
 
+    def save(self, *args, **kwargs):
+        # Un superusuario de Django siempre debe conservar el rol operativo
+        # Administrador y nunca puede quedar limitado a una sucursal.
+        if self.is_superuser:
+            self.rol = self.Rol.ADMINISTRADOR
+            self.sucursal = None
+            update_fields = kwargs.get("update_fields")
+            if update_fields is not None:
+                kwargs["update_fields"] = tuple(
+                    set(update_fields) | {"rol", "sucursal"}
+                )
+        super().save(*args, **kwargs)
+
     @property
     def es_admin(self):
-        return self.rol == self.Rol.ADMINISTRADOR
+        return self.is_superuser or self.rol == self.Rol.ADMINISTRADOR
 
     @property
     def es_supervisor(self):

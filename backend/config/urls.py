@@ -39,6 +39,10 @@ urlpatterns = [
     ),
     path(
         "api/v1/",
+        include("inventario.urls"),
+    ),
+    path(
+        "api/v1/",
         include("conocimiento.urls"),
     ),
 

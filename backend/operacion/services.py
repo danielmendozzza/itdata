@@ -77,9 +77,56 @@ class TransicionTicketError(Exception):
 
 ESTADOS_TERMINALES = (
     "RESUELTO",
-    "CERRADO",
     "CANCELADO",
 )
+
+ESTADOS_OPERATIVOS = (
+    "EN_PROCESO",
+    "ESPERANDO_USUARIO",
+    "ESPERANDO_PROVEEDOR",
+    "ESPERANDO_OTRA_AREA",
+    "EN_PRUEBAS",
+)
+
+
+@transaction.atomic
+def cambiar_estado_ticket(ticket, estado, usuario, comentario=""):
+    from .models import HistorialTicket, Ticket
+
+    ticket = Ticket.objects.select_for_update().get(pk=ticket.pk)
+    estado_anterior = ticket.estado
+    if estado == estado_anterior:
+        raise TransicionTicketError("El ticket ya se encuentra en ese estado.")
+    if estado not in ESTADOS_OPERATIVOS:
+        raise TransicionTicketError(
+            "Ese estado requiere usar la acción específica de asignar, resolver o cerrar."
+        )
+    if estado_anterior in (Ticket.Estado.RESUELTO, Ticket.Estado.CANCELADO):
+        raise TransicionTicketError("Un ticket resuelto o cancelado no puede modificarse.")
+    if not (usuario.es_admin or usuario.es_supervisor):
+        if not usuario.es_tecnico or ticket.tecnico_asignado_id != usuario.pk:
+            raise TransicionTicketError(
+                "Solo el técnico asignado puede actualizar el estado operativo."
+            )
+    if ticket.tecnico_asignado_id is None:
+        raise TransicionTicketError("Primero se debe asignar un técnico al ticket.")
+
+    ticket.estado = estado
+    if estado == Ticket.Estado.EN_PROCESO and ticket.fecha_toma is None:
+        ticket.fecha_toma = timezone.now()
+        ticket.tomado_por = ticket.tecnico_asignado
+    ticket.save(
+        update_fields=("estado", "fecha_toma", "tomado_por", "fecha_modificacion")
+    )
+    crear_movimiento_historial(
+        ticket=ticket,
+        usuario=usuario,
+        tipo_movimiento=HistorialTicket.TipoMovimiento.CAMBIO_ESTADO,
+        comentario=comentario or f"Estado cambiado de {estado_anterior} a {estado}.",
+        estado_anterior=estado_anterior,
+        estado_nuevo=estado,
+    )
+    return ticket
 
 
 @transaction.atomic
@@ -184,39 +231,8 @@ def resolver_ticket(ticket, usuario, solucion):
         estado_anterior=estado_anterior,
         estado_nuevo=ticket.estado,
     )
-    return ticket
-
-
-@transaction.atomic
-def cerrar_ticket(ticket, usuario, comentario=""):
-    from .models import HistorialTicket, Ticket
-
-    ticket = Ticket.objects.select_for_update().get(pk=ticket.pk)
-    if ticket.estado != Ticket.Estado.RESUELTO:
-        raise TransicionTicketError(
-            "Solo se puede cerrar un ticket que esté resuelto."
-        )
-
-    estado_anterior = ticket.estado
-    ticket.estado = Ticket.Estado.CERRADO
-    ticket.cerrado_por = usuario
-    ticket.fecha_cierre = timezone.now()
-    ticket.save(
-        update_fields=(
-            "estado",
-            "cerrado_por",
-            "fecha_cierre",
-            "fecha_modificacion",
-        )
-    )
-    crear_movimiento_historial(
-        ticket=ticket,
-        usuario=usuario,
-        tipo_movimiento=HistorialTicket.TipoMovimiento.CIERRE,
-        comentario=comentario or "Ticket cerrado.",
-        estado_anterior=estado_anterior,
-        estado_nuevo=ticket.estado,
-    )
+    from conocimiento.services import crear_borrador_desde_ticket
+    crear_borrador_desde_ticket(ticket, usuario, exigir_permiso=False)
     return ticket
 
 
@@ -236,6 +252,8 @@ def agregar_comentario_ticket(ticket, usuario, tipo, texto):
         tipo_movimiento=HistorialTicket.TipoMovimiento.COMENTARIO,
         comentario=f"{comentario.get_tipo_display()}: {texto}",
     )
+    from conocimiento.services import crear_borrador_desde_ticket
+    crear_borrador_desde_ticket(ticket, usuario, exigir_permiso=False)
     return comentario
 
 

@@ -3,6 +3,8 @@ import { Injectable, inject } from '@angular/core';
 import { environment } from '../../environments/environment';
 import {
   ArticuloConocimiento,
+  ActivoGestion,
+  ActivoCatalogo,
   ComentarioTicket,
   DashboardData,
   OpcionCatalogo,
@@ -50,6 +52,28 @@ export class ApiService {
     );
   }
 
+  articulo(id: string) {
+    return this.http.get<ArticuloConocimiento>(`${this.base}/conocimiento/articulos/${id}/`);
+  }
+
+  crearArticuloDesdeTicket(ticket: string) {
+    return this.http.post<ArticuloConocimiento>(
+      `${this.base}/conocimiento/articulos/desde-ticket/`, { ticket },
+    );
+  }
+
+  enviarArticuloRevision(id: string) {
+    return this.http.post<ArticuloConocimiento>(
+      `${this.base}/conocimiento/articulos/${id}/enviar-a-revision/`, {},
+    );
+  }
+
+  publicarArticulo(id: string) {
+    return this.http.post<ArticuloConocimiento>(
+      `${this.base}/conocimiento/articulos/${id}/publicar/`, {},
+    );
+  }
+
   sucursales() {
     return this.http.get<Pagina<OpcionCatalogo>>(`${this.base}/sucursales/`, {
       params: new HttpParams().set('page_size', '100'),
@@ -64,6 +88,42 @@ export class ApiService {
     return this.http.get<OpcionCatalogo[]>(`${this.base}/catalogos/subcategorias/`, {
       params: new HttpParams().set('categoria', categoria),
     });
+  }
+
+  categoriasGestion() {
+    return this.http.get<import('./models').CategoriaGestion[]>(`${this.base}/catalogos/categorias/`, {
+      params: new HttpParams().set('todos', 'true'),
+    });
+  }
+
+  crearCategoria(datos: Record<string, unknown>) {
+    return this.http.post<import('./models').CategoriaGestion>(`${this.base}/catalogos/categorias/`, datos);
+  }
+
+  actualizarCategoria(id: string, datos: Record<string, unknown>) {
+    return this.http.patch<import('./models').CategoriaGestion>(`${this.base}/catalogos/categorias/${id}/`, datos);
+  }
+
+  desactivarCategoria(id: string) {
+    return this.http.delete<void>(`${this.base}/catalogos/categorias/${id}/`);
+  }
+
+  subcategoriasGestion() {
+    return this.http.get<import('./models').SubcategoriaGestion[]>(`${this.base}/catalogos/subcategorias/`, {
+      params: new HttpParams().set('todos', 'true'),
+    });
+  }
+
+  crearSubcategoria(datos: Record<string, unknown>) {
+    return this.http.post<import('./models').SubcategoriaGestion>(`${this.base}/catalogos/subcategorias/`, datos);
+  }
+
+  actualizarSubcategoria(id: string, datos: Record<string, unknown>) {
+    return this.http.patch<import('./models').SubcategoriaGestion>(`${this.base}/catalogos/subcategorias/${id}/`, datos);
+  }
+
+  desactivarSubcategoria(id: string) {
+    return this.http.delete<void>(`${this.base}/catalogos/subcategorias/${id}/`);
   }
 
   crearTicket(datos: Record<string, string | null>) {
@@ -87,5 +147,61 @@ export class ApiService {
 
   desactivarUsuario(id: string) {
     return this.http.delete<void>(`${this.base}/configuracion/usuarios/${id}/`);
+  }
+
+  tecnicos() {
+    return this.http.get<Array<{ id: string; username: string; nombre_completo: string }>>(
+      `${this.base}/catalogos/tecnicos/`,
+    );
+  }
+
+  asignarTicket(id: string, tecnico: string) {
+    return this.http.post<TicketDetalle>(`${this.base}/tickets/${id}/asignar/`, { tecnico });
+  }
+
+  tomarTicket(id: string) {
+    return this.http.post<TicketDetalle>(`${this.base}/tickets/${id}/tomar/`, {});
+  }
+
+  cambiarEstadoTicket(id: string, estado: string, comentario = '') {
+    return this.http.post<TicketDetalle>(`${this.base}/tickets/${id}/cambiar-estado/`, {
+      estado,
+      comentario,
+    });
+  }
+
+  resolverTicket(id: string, solucion: string) {
+    return this.http.post<TicketDetalle>(`${this.base}/tickets/${id}/resolver/`, { solucion });
+  }
+
+  activos(search = '') {
+    const params = search ? new HttpParams().set('search', search) : undefined;
+    return this.http.get<Pagina<ActivoGestion>>(`${this.base}/configuracion/activos/`, { params });
+  }
+
+  crearActivo(datos: Record<string, unknown>) {
+    return this.http.post<ActivoGestion>(`${this.base}/configuracion/activos/`, datos);
+  }
+
+  actualizarActivo(id: string, datos: Record<string, unknown>) {
+    return this.http.patch<ActivoGestion>(`${this.base}/configuracion/activos/${id}/`, datos);
+  }
+
+  desactivarActivo(id: string) {
+    return this.http.delete<void>(`${this.base}/configuracion/activos/${id}/`);
+  }
+
+  tiposActivo() {
+    return this.http.get<OpcionCatalogo[]>(`${this.base}/catalogos/tipos-activo/`);
+  }
+
+  criticidades() {
+    return this.http.get<OpcionCatalogo[]>(`${this.base}/catalogos/criticidades/`);
+  }
+
+  activosPorSucursal(sucursal: string) {
+    return this.http.get<ActivoCatalogo[]>(`${this.base}/catalogos/activos/`, {
+      params: new HttpParams().set('sucursal', sucursal),
+    });
   }
 }

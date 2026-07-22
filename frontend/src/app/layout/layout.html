@@ -1,20 +1,22 @@
 <div class="app-shell">
   <aside class="sidebar" [class.open]="menuAbierto()">
     <a class="logo" routerLink="/dashboard" (click)="menuAbierto.set(false)">
-      <span>IT</span><strong>ITDATA</strong>
+      <span>IT</span><strong>QSR ITDATA</strong>
     </a>
     <p class="nav-label">OPERACIONES</p>
     <nav>
       <a routerLink="/dashboard" routerLinkActive="active" (click)="menuAbierto.set(false)"><i>⌂</i> Dashboard</a>
       <a routerLink="/tickets" routerLinkActive="active" (click)="menuAbierto.set(false)"><i>▤</i> Tickets</a>
+      <a routerLink="/inventario" routerLinkActive="active" (click)="menuAbierto.set(false)"><i>▦</i> Inventario</a>
+      <a routerLink="/proyectos" routerLinkActive="active" (click)="menuAbierto.set(false)"><i>◆</i> Proyectos</a>
       <a routerLink="/conocimiento" routerLinkActive="active" (click)="menuAbierto.set(false)"><i>◇</i> Base de conocimiento</a>
       @if (auth.puedeConfigurar()) {
         <a routerLink="/configuracion" routerLinkActive="active" (click)="menuAbierto.set(false)"><i>⚙</i> Configuraciones</a>
       }
     </nav>
     <div class="sidebar-note">
-      <span>MEMORIA TÉCNICA</span>
-      <p>Documentá hoy lo que el equipo necesitará mañana.</p>
+      <span>MEMORIA TECNICA</span>
+      <p>Informacion util para resolver incidencias.</p>
     </div>
     <button class="logout" (click)="auth.cerrarSesion()">↪ Cerrar sesión</button>
   </aside>

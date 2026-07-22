@@ -84,7 +84,6 @@ class Ticket(ModeloBase):
         ESPERANDO_OTRA_AREA = "ESPERANDO_OTRA_AREA", "Esperando otra área"
         EN_PRUEBAS = "EN_PRUEBAS", "En pruebas"
         RESUELTO = "RESUELTO", "Resuelto"
-        CERRADO = "CERRADO", "Cerrado"
         CANCELADO = "CANCELADO", "Cancelado"
 
     class Prioridad(models.TextChoices):

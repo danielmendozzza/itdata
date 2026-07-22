@@ -27,6 +27,17 @@ export interface Pagina<T> {
   results: T[];
 }
 
+export interface CategoriaGestion {
+  id: string;
+  nombre: string;
+  descripcion: string;
+  activo: boolean;
+}
+
+export interface SubcategoriaGestion extends CategoriaGestion {
+  categoria: string;
+}
+
 export interface TicketLista {
   id: string;
   codigo: string;
@@ -60,6 +71,9 @@ export interface ComentarioTicket {
 export interface TicketDetalle extends TicketLista {
   descripcion: string;
   solucion: string;
+  sucursal_nombre: string;
+  activo_nombre: string | null;
+  tecnico_asignado_nombre: string | null;
   historial: MovimientoTicket[];
   comentarios: ComentarioTicket[];
   adjuntos: Array<{
@@ -77,7 +91,6 @@ export interface DashboardData {
   tickets_abiertos?: number;
   tickets_en_proceso?: number;
   tickets_resueltos: number;
-  tickets_cerrados?: number;
   tickets_activos?: number;
   por_estado: Array<{ estado: string; total: number }>;
 }
@@ -93,6 +106,7 @@ export interface ArticuloConocimiento {
   autor: string;
   fecha_modificacion: string;
   fecha_publicacion: string | null;
+  tickets_relacionados?: string[];
 }
 
 export interface OpcionCatalogo {
@@ -116,4 +130,30 @@ export interface UsuarioGestion {
   sucursales_asignadas: string[];
   activo_operativamente: boolean;
   is_active: boolean;
+}
+
+export interface ActivoGestion {
+  id: string;
+  codigo: string;
+  nombre: string;
+  tipo_activo: string;
+  tipo_activo_nombre: string;
+  sucursal: string | null;
+  sucursal_nombre: string | null;
+  criticidad: string;
+  criticidad_nombre: string;
+  marca: string;
+  modelo: string;
+  numero_serie: string;
+  direccion_ip: string | null;
+  estado: 'OPERATIVO' | 'EN_REPARACION' | 'FUERA_SERVICIO' | 'BAJA';
+  activo: boolean;
+}
+
+export interface ActivoCatalogo {
+  id: string;
+  codigo: string;
+  nombre: string;
+  sucursal: string | null;
+  estado: string;
 }

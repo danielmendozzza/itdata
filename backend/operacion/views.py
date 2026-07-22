@@ -19,7 +19,7 @@ from .serializers import (
 	TicketUpdateSerializer,
 	AsignarTicketSerializer,
 	AdjuntoTicketSerializer,
-	CerrarTicketSerializer,
+	CambiarEstadoTicketSerializer,
 	ComentarioTicketSerializer,
 	DashboardGeneralResponseSerializer,
 	DashboardPersonalResponseSerializer,
@@ -29,13 +29,13 @@ from .serializers import (
 	SubcategoriaSerializer,
 )
 from .filters import TicketFilter
-from .permissions import PuedeVerReportes, TicketPermission
+from .permissions import PuedeAdministrarCatalogos, PuedeVerReportes, TicketPermission
 from .services import (
 	TransicionTicketError,
 	agregar_adjunto_ticket,
 	agregar_comentario_ticket,
 	asignar_ticket,
-	cerrar_ticket,
+	cambiar_estado_ticket,
 	crear_movimiento_historial,
 	resolver_ticket,
 	tomar_ticket,
@@ -44,25 +44,45 @@ from .models import HistorialTicket
 from .models import AdjuntoTicket
 
 
-class CategoriaViewSet(viewsets.ReadOnlyModelViewSet):
-	queryset = Categoria.objects.filter(activo=True)
+class CategoriaViewSet(viewsets.ModelViewSet):
 	serializer_class = CategoriaSerializer
-	permission_classes = (IsAuthenticated,)
+	permission_classes = (PuedeAdministrarCatalogos,)
 	pagination_class = None
 	search_fields = ("nombre", "descripcion")
 	ordering = ("nombre",)
 
+	def get_queryset(self):
+		queryset = Categoria.objects.all()
+		if self.request.query_params.get("todos") != "true":
+			queryset = queryset.filter(activo=True)
+		return queryset
 
-class SubcategoriaViewSet(viewsets.ReadOnlyModelViewSet):
+	def destroy(self, request, *args, **kwargs):
+		categoria = self.get_object()
+		categoria.activo = False
+		categoria.save(update_fields=("activo", "fecha_modificacion"))
+		return Response(status=204)
+
+
+class SubcategoriaViewSet(viewsets.ModelViewSet):
 	serializer_class = SubcategoriaSerializer
-	permission_classes = (IsAuthenticated,)
+	permission_classes = (PuedeAdministrarCatalogos,)
 	pagination_class = None
 	filterset_fields = ("categoria",)
 	search_fields = ("nombre", "descripcion")
 	ordering = ("categoria__nombre", "nombre")
 
 	def get_queryset(self):
-		return Subcategoria.objects.filter(activo=True, categoria__activo=True)
+		queryset = Subcategoria.objects.select_related("categoria")
+		if self.request.query_params.get("todos") != "true":
+			queryset = queryset.filter(activo=True, categoria__activo=True)
+		return queryset
+
+	def destroy(self, request, *args, **kwargs):
+		subcategoria = self.get_object()
+		subcategoria.activo = False
+		subcategoria.save(update_fields=("activo", "fecha_modificacion"))
+		return Response(status=204)
 
 
 class TicketViewSet(viewsets.ModelViewSet):
@@ -95,8 +115,8 @@ class TicketViewSet(viewsets.ModelViewSet):
 			return AsignarTicketSerializer
 		if self.action == "resolver":
 			return ResolverTicketSerializer
-		if self.action == "cerrar":
-			return CerrarTicketSerializer
+		if self.action == "cambiar_estado":
+			return CambiarEstadoTicketSerializer
 
 		return TicketDetailSerializer
 
@@ -113,6 +133,8 @@ class TicketViewSet(viewsets.ModelViewSet):
 			prioridad_nueva=ticket.prioridad_final,
 			responsable_nuevo=ticket.responsable_actual,
 		)
+		from conocimiento.services import crear_borrador_desde_ticket
+		crear_borrador_desde_ticket(ticket, self.request.user, exigir_permiso=False)
 
 	def perform_update(self, serializer):
 		# Capture previous values
@@ -196,15 +218,16 @@ class TicketViewSet(viewsets.ModelViewSet):
 		)
 
 	@extend_schema(
-		request=CerrarTicketSerializer,
+		request=CambiarEstadoTicketSerializer,
 		responses=TicketDetailSerializer,
 	)
-	@action(detail=True, methods=("post",))
-	def cerrar(self, request, pk=None):
+	@action(detail=True, methods=("post",), url_path="cambiar-estado")
+	def cambiar_estado(self, request, pk=None):
 		serializer = self.get_serializer(data=request.data)
 		serializer.is_valid(raise_exception=True)
 		return self._ejecutar_transicion(
-			cerrar_ticket,
+			cambiar_estado_ticket,
+			estado=serializer.validated_data["estado"],
 			comentario=serializer.validated_data.get("comentario", ""),
 		)
 
@@ -382,7 +405,7 @@ class DashboardGeneralView(APIView):
 		if errores:
 			return Response(errores, status=400)
 
-		cerrados = (Ticket.Estado.CERRADO, Ticket.Estado.CANCELADO)
+		cerrados = (Ticket.Estado.RESUELTO, Ticket.Estado.CANCELADO)
 		evolucion = list(
 			queryset.annotate(fecha=TruncDate("fecha_creacion"))
 			.values("fecha")
@@ -399,9 +422,6 @@ class DashboardGeneralView(APIView):
 				"tickets_resueltos": queryset.filter(
 					estado=Ticket.Estado.RESUELTO
 				).count(),
-				"tickets_cerrados": queryset.filter(
-					estado=Ticket.Estado.CERRADO
-				).count(),
 				"por_estado": _conteos(queryset, "estado"),
 				"evolucion_diaria": evolucion,
 			}
@@ -416,7 +436,7 @@ class DashboardPersonalView(APIView):
 		if not request.user.activo_operativamente:
 			return Response({"detail": "Usuario inactivo."}, status=403)
 		queryset = selectors.obtener_tickets_propios_para_dashboard(request.user)
-		finalizados = (Ticket.Estado.RESUELTO, Ticket.Estado.CERRADO)
+		finalizados = (Ticket.Estado.RESUELTO,)
 		no_activos = finalizados + (Ticket.Estado.CANCELADO,)
 		return Response(
 			{

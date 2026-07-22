@@ -40,6 +40,21 @@ class UsuarioApiTests(TestCase):
         self.assertEqual(len(response.data), 1)
         self.assertEqual(response.data[0]["id"], str(self.tecnico.pk))
 
+    def test_superusuario_siempre_es_administrador_sin_sucursal(self):
+        Usuario = get_user_model()
+        superusuario = Usuario.objects.create_superuser(
+            username="root_test",
+            password="password123",
+            rol=Usuario.Rol.SUCURSAL,
+        )
+        self.assertEqual(superusuario.rol, Usuario.Rol.ADMINISTRADOR)
+        self.assertIsNone(superusuario.sucursal_id)
+
+        superusuario.rol = Usuario.Rol.SUCURSAL
+        superusuario.save(update_fields=("rol",))
+        superusuario.refresh_from_db()
+        self.assertEqual(superusuario.rol, Usuario.Rol.ADMINISTRADOR)
+
 
 class AdministracionUsuariosApiTests(TestCase):
     def setUp(self):

@@ -14,13 +14,13 @@ from .models import (
 class CategoriaSerializer(serializers.ModelSerializer):
     class Meta:
         model = Categoria
-        fields = ("id", "nombre", "descripcion")
+        fields = ("id", "nombre", "descripcion", "activo")
 
 
 class SubcategoriaSerializer(serializers.ModelSerializer):
     class Meta:
         model = Subcategoria
-        fields = ("id", "categoria", "nombre", "descripcion")
+        fields = ("id", "categoria", "nombre", "descripcion", "activo")
 
 
 class HistorialTicketSerializer(serializers.ModelSerializer):
@@ -91,6 +91,11 @@ class TicketListSerializer(serializers.ModelSerializer):
 
 class TicketDetailSerializer(serializers.ModelSerializer):
     creado_por = serializers.StringRelatedField()
+    sucursal_nombre = serializers.CharField(source="sucursal.nombre", read_only=True)
+    activo_nombre = serializers.StringRelatedField(source="activo", read_only=True)
+    tecnico_asignado_nombre = serializers.StringRelatedField(
+        source="tecnico_asignado", read_only=True
+    )
     historial = HistorialTicketSerializer(many=True, read_only=True)
     comentarios = ComentarioTicketSerializer(many=True, read_only=True)
     adjuntos = AdjuntoTicketSerializer(many=True, read_only=True)
@@ -195,7 +200,16 @@ class ResolverTicketSerializer(serializers.Serializer):
     solucion = serializers.CharField(allow_blank=False, trim_whitespace=True)
 
 
-class CerrarTicketSerializer(serializers.Serializer):
+class CambiarEstadoTicketSerializer(serializers.Serializer):
+    estado = serializers.ChoiceField(
+        choices=(
+            Ticket.Estado.EN_PROCESO,
+            Ticket.Estado.ESPERANDO_USUARIO,
+            Ticket.Estado.ESPERANDO_PROVEEDOR,
+            Ticket.Estado.ESPERANDO_OTRA_AREA,
+            Ticket.Estado.EN_PRUEBAS,
+        )
+    )
     comentario = serializers.CharField(
         required=False, allow_blank=True, trim_whitespace=True
     )
@@ -219,7 +233,6 @@ class DashboardGeneralResponseSerializer(serializers.Serializer):
     tickets_abiertos = serializers.IntegerField()
     tickets_en_proceso = serializers.IntegerField()
     tickets_resueltos = serializers.IntegerField()
-    tickets_cerrados = serializers.IntegerField()
     por_estado = serializers.ListField(child=serializers.DictField())
     evolucion_diaria = serializers.ListField(child=serializers.DictField())
 

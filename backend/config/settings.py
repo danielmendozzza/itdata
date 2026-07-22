@@ -171,7 +171,6 @@ SPECTACULAR_SETTINGS = {
             ("ESPERANDO_OTRA_AREA", "Esperando otra área"),
             ("EN_PRUEBAS", "En pruebas"),
             ("RESUELTO", "Resuelto"),
-            ("CERRADO", "Cerrado"),
             ("CANCELADO", "Cancelado"),
         ],
         "ActivoEstadoEnum": [

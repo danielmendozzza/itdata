@@ -220,7 +220,7 @@ class TicketApiTests(TestCase):
 		)
 		self.client.force_authenticate(self.consultor)
 		response = self.client.patch(
-			f"/api/v1/tickets/{ticket.pk}/", {"estado": Ticket.Estado.CERRADO}
+			f"/api/v1/tickets/{ticket.pk}/", {"estado": Ticket.Estado.RESUELTO}
 		)
 		self.assertEqual(response.status_code, 403)
 
@@ -254,7 +254,7 @@ class TicketApiTests(TestCase):
 
 	def test_reporte_filtra_por_rango_de_fechas(self):
 		antiguo = self.crear_ticket_reporte()
-		reciente = self.crear_ticket_reporte(Ticket.Estado.CERRADO)
+		reciente = self.crear_ticket_reporte(Ticket.Estado.RESUELTO)
 		Ticket.objects.filter(pk=antiguo.pk).update(
 			fecha_creacion=timezone.now() - timedelta(days=10)
 		)
@@ -271,7 +271,7 @@ class TicketApiTests(TestCase):
 	def test_dashboard_calcula_resumen(self):
 		self.crear_ticket_reporte(Ticket.Estado.NUEVO)
 		self.crear_ticket_reporte(Ticket.Estado.EN_PROCESO)
-		self.crear_ticket_reporte(Ticket.Estado.CERRADO)
+		self.crear_ticket_reporte(Ticket.Estado.RESUELTO)
 
 		self.client.force_authenticate(self.supervisor)
 		response = self.client.get("/api/v1/dashboard/general/")
@@ -279,7 +279,8 @@ class TicketApiTests(TestCase):
 		self.assertEqual(response.data["tickets_total"], 3)
 		self.assertEqual(response.data["tickets_abiertos"], 2)
 		self.assertEqual(response.data["tickets_en_proceso"], 1)
-		self.assertEqual(response.data["tickets_cerrados"], 1)
+		self.assertEqual(response.data["tickets_resueltos"], 1)
+
 
 	def test_tecnico_no_puede_ver_dashboard_general(self):
 		self.client.force_authenticate(self.tecnico)
@@ -323,33 +324,23 @@ class TicketApiTests(TestCase):
 		self.assertEqual(ticket.resuelto_por, self.tecnico)
 		self.assertIsNotNone(ticket.fecha_resolucion)
 
-		self.client.force_authenticate(self.admin)
-		response = self.client.post(
-			f"{base_url}/cerrar/", {"comentario": "Validado por soporte."}
-		)
-		self.assertEqual(response.status_code, 200)
-		ticket.refresh_from_db()
-		self.assertEqual(ticket.estado, Ticket.Estado.CERRADO)
-		self.assertEqual(ticket.cerrado_por, self.admin)
-		self.assertIsNotNone(ticket.fecha_cierre)
-		self.assertEqual(ticket.historial.count(), 4)
+		self.assertEqual(ticket.historial.count(), 3)
 		self.assertEqual(
 			list(ticket.historial.values_list("tipo_movimiento", flat=True)),
 			[
 				HistorialTicket.TipoMovimiento.ASIGNACION,
 				HistorialTicket.TipoMovimiento.CAMBIO_ESTADO,
 				HistorialTicket.TipoMovimiento.RESOLUCION,
-				HistorialTicket.TipoMovimiento.CIERRE,
 			],
 		)
 
-	def test_no_se_puede_cerrar_un_ticket_sin_resolver(self):
+	def test_endpoint_cerrar_ya_no_existe(self):
 		ticket = self.crear_ticket_reporte()
 		self.client.force_authenticate(self.admin)
 		response = self.client.post(
 			f"/api/v1/tickets/{ticket.pk}/cerrar/", {}
 		)
-		self.assertEqual(response.status_code, 400)
+		self.assertEqual(response.status_code, 404)
 		ticket.refresh_from_db()
 		self.assertEqual(ticket.estado, Ticket.Estado.NUEVO)
 		self.assertEqual(ticket.historial.count(), 0)
@@ -368,11 +359,45 @@ class TicketApiTests(TestCase):
 		self.client.force_authenticate(self.admin)
 		response = self.client.patch(
 			f"/api/v1/tickets/{ticket.pk}/",
-			{"estado": Ticket.Estado.CERRADO},
+			{"estado": Ticket.Estado.RESUELTO},
 		)
 		self.assertEqual(response.status_code, 200)
 		ticket.refresh_from_db()
 		self.assertEqual(ticket.estado, Ticket.Estado.NUEVO)
+
+	def test_supervisor_cambia_estado_operativo_de_ticket_asignado(self):
+		ticket = self.crear_ticket_reporte(Ticket.Estado.ASIGNADO)
+		ticket.tecnico_asignado = self.tecnico
+		ticket.save(update_fields=("tecnico_asignado", "fecha_modificacion"))
+		self.client.force_authenticate(self.supervisor)
+		response = self.client.post(
+			f"/api/v1/tickets/{ticket.pk}/cambiar-estado/",
+			{"estado": Ticket.Estado.ESPERANDO_PROVEEDOR, "comentario": "En garantía."},
+		)
+		self.assertEqual(response.status_code, 200)
+		ticket.refresh_from_db()
+		self.assertEqual(ticket.estado, Ticket.Estado.ESPERANDO_PROVEEDOR)
+		self.assertEqual(ticket.historial.get().estado_nuevo, Ticket.Estado.ESPERANDO_PROVEEDOR)
+
+	def test_tecnico_asignado_puede_cambiar_estado_operativo(self):
+		ticket = self.crear_ticket_reporte(Ticket.Estado.EN_PROCESO)
+		ticket.tecnico_asignado = self.tecnico
+		ticket.save(update_fields=("tecnico_asignado", "fecha_modificacion"))
+		self.client.force_authenticate(self.tecnico)
+		response = self.client.post(
+			f"/api/v1/tickets/{ticket.pk}/cambiar-estado/",
+			{"estado": Ticket.Estado.EN_PRUEBAS},
+		)
+		self.assertEqual(response.status_code, 200)
+
+	def test_ticket_sin_tecnico_no_puede_cambiar_estado_operativo(self):
+		ticket = self.crear_ticket_reporte()
+		self.client.force_authenticate(self.admin)
+		response = self.client.post(
+			f"/api/v1/tickets/{ticket.pk}/cambiar-estado/",
+			{"estado": Ticket.Estado.EN_PROCESO},
+		)
+		self.assertEqual(response.status_code, 400)
 
 	def test_tecnico_documenta_diagnostico_en_ticket_asignado(self):
 		ticket = self.crear_ticket_reporte()
@@ -454,3 +479,24 @@ class TicketApiTests(TestCase):
 		self.assertEqual(response.status_code, 200)
 		self.assertEqual(response.data["tickets_activos"], 1)
 		self.assertEqual(response.data["tickets_resueltos"], 1)
+
+
+class CatalogosConfiguracionApiTests(TestCase):
+	def setUp(self):
+		Usuario = get_user_model()
+		self.admin = Usuario.objects.create_user(username="admin_catalogos", password="password123", rol=Usuario.Rol.ADMINISTRADOR)
+		self.consultor = Usuario.objects.create_user(username="consultor_catalogos", password="password123", rol=Usuario.Rol.CONSULTOR)
+		self.client = APIClient()
+
+	def test_admin_crea_categoria_y_subcategoria(self):
+		self.client.force_authenticate(self.admin)
+		response = self.client.post("/api/v1/catalogos/categorias/", {"nombre": "Redes", "descripcion": "Conectividad", "activo": True})
+		self.assertEqual(response.status_code, 201)
+		response = self.client.post("/api/v1/catalogos/subcategorias/", {"categoria": response.data["id"], "nombre": "WiFi", "activo": True})
+		self.assertEqual(response.status_code, 201)
+
+	def test_consultor_puede_leer_pero_no_modificar_catalogos(self):
+		self.client.force_authenticate(self.consultor)
+		self.assertEqual(self.client.get("/api/v1/catalogos/categorias/").status_code, 200)
+		response = self.client.post("/api/v1/catalogos/categorias/", {"nombre": "Prohibida"})
+		self.assertEqual(response.status_code, 403)

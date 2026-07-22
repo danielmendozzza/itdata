@@ -23,6 +23,19 @@ class PuedeVerReportes(BasePermission):
         )
 
 
+class PuedeAdministrarCatalogos(BasePermission):
+    message = "Solo Administradores y Supervisores pueden modificar categorías."
+
+    def has_permission(self, request, view):
+        if not request.user or not request.user.is_authenticated:
+            return False
+        if request.method in ("GET", "HEAD", "OPTIONS"):
+            return request.user.activo_operativamente
+        return request.user.activo_operativamente and (
+            request.user.es_admin or request.user.es_supervisor
+        )
+
+
 class PuedeCrearTicket(BasePermission):
     message = "No tenés permisos para crear un ticket en esa sucursal."
 
@@ -90,8 +103,16 @@ class TicketPermission(BasePermission):
 
         action = getattr(view, "action", None)
 
-        if action in ("asignar", "cerrar"):
+        if action == "asignar":
             return request.user.es_admin or request.user.es_supervisor
+
+        if action == "cambiar_estado":
+            if request.user.es_admin or request.user.es_supervisor:
+                return True
+            return (
+                request.user.es_tecnico
+                and obj.tecnico_asignado_id == request.user.id
+            )
 
         if action == "tomar":
             return request.user.es_tecnico and (

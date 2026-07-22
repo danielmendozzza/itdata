@@ -106,6 +106,10 @@ class UsuarioAdminWriteSerializer(serializers.ModelSerializer):
         request = self.context["request"]
         actor = request.user
         rol = attrs.get("rol", getattr(self.instance, "rol", None))
+        if self.instance and self.instance.is_superuser and rol != Usuario.Rol.ADMINISTRADOR:
+            raise serializers.ValidationError(
+                {"rol": "Un superusuario siempre debe conservar el rol Administrador."}
+            )
         if actor.rol == Usuario.Rol.SUPERVISOR and rol in (
             Usuario.Rol.ADMINISTRADOR,
             Usuario.Rol.SUPERVISOR,

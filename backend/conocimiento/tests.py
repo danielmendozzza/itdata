@@ -79,7 +79,7 @@ class BaseConocimientoApiTests(TestCase):
         self.assertIn("Reiniciar el servicio SQL", articulo.procedimiento_solucion)
         self.assertEqual(list(articulo.tickets_relacionados.all()), [self.ticket])
 
-    def test_no_genera_articulo_desde_ticket_sin_resolver(self):
+    def test_genera_y_actualiza_borrador_desde_ticket_sin_resolver(self):
         self.ticket.estado = Ticket.Estado.EN_PROCESO
         self.ticket.save(update_fields=("estado", "fecha_modificacion"))
         self.client.force_authenticate(self.tecnico)
@@ -87,8 +87,14 @@ class BaseConocimientoApiTests(TestCase):
             "/api/v1/conocimiento/articulos/desde-ticket/",
             {"ticket": str(self.ticket.pk)},
         )
-        self.assertEqual(response.status_code, 400)
-        self.assertEqual(ArticuloConocimiento.objects.count(), 0)
+        self.assertEqual(response.status_code, 201)
+        self.assertEqual(ArticuloConocimiento.objects.count(), 1)
+        response = self.client.post(
+            "/api/v1/conocimiento/articulos/desde-ticket/",
+            {"ticket": str(self.ticket.pk)},
+        )
+        self.assertEqual(response.status_code, 201)
+        self.assertEqual(ArticuloConocimiento.objects.count(), 1)
 
     def test_tecnico_no_responsable_no_puede_documentar_ticket(self):
         self.client.force_authenticate(self.otro_tecnico)
@@ -128,7 +134,7 @@ class BaseConocimientoApiTests(TestCase):
         self.client.force_authenticate(self.consultor)
         response = self.client.get("/api/v1/conocimiento/articulos/")
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.data["count"], 0)
+        self.assertEqual(response.data["count"], 1)
 
         articulo.estado = ArticuloConocimiento.Estado.PUBLICADO
         articulo.save(update_fields=("estado", "fecha_modificacion"))
@@ -145,13 +151,13 @@ class BaseConocimientoApiTests(TestCase):
         )
         self.assertEqual(response.status_code, 403)
 
-    def test_busqueda_encuentra_contenido_tecnico(self):
+    def test_busqueda_encuentra_titulo_o_descripcion_del_ticket(self):
         articulo = self.crear_borrador()
         articulo.estado = ArticuloConocimiento.Estado.PUBLICADO
         articulo.save(update_fields=("estado", "fecha_modificacion"))
         self.client.force_authenticate(self.usuario_sucursal)
         response = self.client.get(
-            "/api/v1/conocimiento/articulos/?search=servicio+SQL"
+            "/api/v1/conocimiento/articulos/?search=POS+no+inicia"
         )
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.data["count"], 1)

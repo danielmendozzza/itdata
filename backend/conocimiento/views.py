@@ -32,15 +32,10 @@ class ArticuloConocimientoViewSet(viewsets.ModelViewSet):
     permission_classes = (IsAuthenticated, ArticuloConocimientoPermission)
     filterset_fields = ("estado", "categoria", "subcategoria", "tipo_activo", "autor")
     search_fields = (
-        "codigo",
         "titulo",
         "resumen",
-        "sintomas",
-        "diagnostico",
-        "causa",
-        "procedimiento_solucion",
-        "palabras_clave",
-        "tickets_relacionados__codigo",
+        "tickets_relacionados__titulo",
+        "tickets_relacionados__descripcion",
     )
     ordering_fields = ("titulo", "fecha_creacion", "fecha_modificacion", "fecha_publicacion")
     ordering = ("-fecha_modificacion",)

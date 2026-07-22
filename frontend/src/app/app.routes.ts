@@ -31,9 +31,26 @@ export const routes: Routes = [
           import('./pages/ticket-detail/ticket-detail').then((m) => m.TicketDetailPage),
       },
       {
+        path: 'inventario',
+        data: { titulo: 'Inventario' },
+        loadComponent: () =>
+          import('./pages/inactive-module/inactive-module').then((m) => m.InactiveModulePage),
+      },
+      {
+        path: 'proyectos',
+        data: { titulo: 'Proyectos' },
+        loadComponent: () =>
+          import('./pages/inactive-module/inactive-module').then((m) => m.InactiveModulePage),
+      },
+      {
         path: 'conocimiento',
         loadComponent: () =>
           import('./pages/knowledge/knowledge').then((m) => m.KnowledgePage),
+      },
+      {
+        path: 'conocimiento/:id',
+        loadComponent: () =>
+          import('./pages/knowledge-trace/knowledge-trace').then((m) => m.KnowledgeTracePage),
       },
       {
         path: 'configuracion',

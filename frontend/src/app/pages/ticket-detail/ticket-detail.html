@@ -5,14 +5,29 @@
   <section class="detail-grid">
     <div class="main-column">
       <article class="panel"><div class="panel-title"><div><p class="eyebrow">BITÁCORA TÉCNICA</p><h2>Documentación del caso</h2></div><span>{{ t.comentarios.length }} registros</span></div>
-        <div class="comment-form"><select [(ngModel)]="tipoComentario"><option value="NOTA">Nota</option><option value="DIAGNOSTICO">Diagnóstico</option><option value="ACCION_REALIZADA">Acción realizada</option><option value="RESPUESTA_USUARIO">Respuesta del usuario</option></select><textarea [(ngModel)]="comentario" rows="3" placeholder="Documentá el diagnóstico, la acción o un dato relevante…"></textarea><button class="primary-button" (click)="guardarComentario()" [disabled]="guardando()">{{ guardando() ? 'Guardando…' : 'Agregar a la bitácora' }}</button></div>
-        <div class="timeline">
-          @for (item of t.comentarios; track item.id) { <div class="timeline-item"><i></i><div><div class="timeline-meta"><strong>{{ texto(item.tipo) }}</strong><span>{{ item.fecha_creacion | date:'dd/MM/yyyy HH:mm' }}</span></div><p>{{ item.texto }}</p><small>Por {{ item.autor }}</small></div></div> }
-          @empty { <p class="empty">Aún no hay documentación técnica. Agregá el primer diagnóstico.</p> }
-        </div>
+        <div class="timeline">@for (item of t.comentarios; track item.id) { <div class="timeline-item"><i></i><div><div class="timeline-meta"><strong>{{ texto(item.tipo) }}</strong><span>{{ item.fecha_creacion | date:'dd/MM/yyyy HH:mm' }}</span></div><p>{{ item.texto }}</p><small>Por {{ item.autor }}</small></div></div> } @empty { <p class="empty">Aún no hay documentación técnica. Agregá el primer diagnóstico.</p> }</div>
       </article>
       <article class="panel"><div class="panel-title"><div><p class="eyebrow">TRAZABILIDAD</p><h2>Historial de movimientos</h2></div></div><div class="history-list">@for (mov of t.historial; track mov.id) { <div><span>{{ mov.fecha_creacion | date:'dd/MM HH:mm' }}</span><p><strong>{{ texto(mov.tipo_movimiento) }}</strong> · {{ mov.comentario }}</p><small>{{ mov.usuario }}</small></div> }</div></article>
     </div>
-    <aside class="side-column"><article class="panel info-card"><p class="eyebrow">INFORMACIÓN</p><dl><div><dt>Sucursal</dt><dd>{{ t.sucursal }}</dd></div><div><dt>Activo</dt><dd>{{ t.activo || 'Sin activo asociado' }}</dd></div><div><dt>Responsable actual</dt><dd>{{ texto(t.responsable_actual) }}</dd></div><div><dt>Creado por</dt><dd>{{ t.creado_por }}</dd></div><div><dt>Fecha de creación</dt><dd>{{ t.fecha_creacion | date:'dd/MM/yyyy HH:mm' }}</dd></div></dl></article><article class="panel solution"><p class="eyebrow">SOLUCIÓN</p><p>{{ t.solucion || 'La solución aparecerá aquí cuando el caso sea resuelto.' }}</p></article><article class="panel"><p class="eyebrow">EVIDENCIAS</p><div class="files">@for (file of t.adjuntos; track file.id) { <a [href]="file.archivo" target="_blank">▧ {{ file.nombre_original }}</a> } @empty { <p>Sin archivos adjuntos.</p> }</div></article></aside>
+    <aside class="side-column">
+      @if (puedeAdministrar() || puedeOperar(t) || puedeTomar(t)) {
+        <article class="panel workflow"><p class="eyebrow">GESTIÓN DEL TICKET</p><h2>Flujo operativo</h2>
+          @if (puedeAdministrar() && !['RESUELTO','CANCELADO'].includes(t.estado)) { <label>Asignar técnico<select [(ngModel)]="tecnicoSeleccionado"><option value="">Seleccionar técnico</option>@for (tecnico of tecnicos(); track tecnico.id) { <option [value]="tecnico.id">{{ tecnico.nombre_completo }}</option> }</select></label><button (click)="asignar()" [disabled]="!tecnicoSeleccionado || guardando()">Asignar / reasignar</button> }
+          @if (puedeTomar(t) && t.estado !== 'EN_PROCESO') { <button class="primary-button" (click)="tomar()" [disabled]="guardando()">Tomar ticket</button> }
+          @if (puedeOperar(t) && t.tecnico_asignado && t.estado !== 'RESUELTO' && t.estado !== 'CANCELADO') {
+            <label>¿Qué gestión vas a realizar?<select [(ngModel)]="gestionAccion"><option value="NOTA">Agregar nota</option><option value="DIAGNOSTICO">Registrar diagnóstico</option><option value="ACCION_REALIZADA">Registrar acción realizada</option><option value="RESPUESTA_USUARIO">Registrar respuesta del usuario</option><option value="CAMBIO_ESTADO">Cambiar estado</option><option value="RESOLVER">Resolver ticket</option></select></label>
+            @if (gestionAccion === 'CAMBIO_ESTADO') { <label>Nuevo estado<select [(ngModel)]="estadoSeleccionado">@for (estado of estadosOperativos; track estado.value) { <option [value]="estado.value">{{ estado.label }}</option> }</select></label> }
+            <label>{{ gestionAccion === 'RESOLVER' ? 'Solución aplicada' : 'Detalle de la gestión' }}<textarea [(ngModel)]="gestionTexto" rows="3" [placeholder]="gestionAccion === 'CAMBIO_ESTADO' ? 'Comentario opcional' : 'Escribí el detalle…'"></textarea></label>
+            <button class="primary-button" (click)="guardarGestion()" [disabled]="guardando() || (gestionRequiereTexto() && !gestionTexto.trim()) || (gestionAccion === 'CAMBIO_ESTADO' && estadoSeleccionado === t.estado)">{{ guardando() ? 'Guardando…' : 'Guardar gestión' }}</button>
+          }
+          @if (puedeDocumentar(t)) { <button class="knowledge-action" (click)="crearArticulo()" [disabled]="guardando()">Actualizar borrador de conocimiento</button> }
+          @if (mensajeConocimiento()) { <p class="action-success">{{ mensajeConocimiento() }}</p> }
+          @if (errorAccion()) { <p class="action-error">{{ errorAccion() }}</p> }
+        </article>
+      }
+      <article class="panel info-card"><p class="eyebrow">INFORMACIÓN</p><dl><div><dt>Sucursal</dt><dd>{{ t.sucursal_nombre }}</dd></div><div><dt>Activo</dt><dd>{{ t.activo_nombre || 'Sin activo asociado' }}</dd></div><div><dt>Técnico asignado</dt><dd>{{ t.tecnico_asignado_nombre || 'Sin asignar' }}</dd></div><div><dt>Responsable actual</dt><dd>{{ texto(t.responsable_actual) }}</dd></div><div><dt>Creado por</dt><dd>{{ t.creado_por }}</dd></div><div><dt>Fecha de creación</dt><dd>{{ t.fecha_creacion | date:'dd/MM/yyyy HH:mm' }}</dd></div></dl></article>
+      <article class="panel solution"><p class="eyebrow">SOLUCIÓN</p><p>{{ t.solucion || 'La solución aparecerá aquí cuando el caso sea resuelto.' }}</p></article>
+      <article class="panel"><p class="eyebrow">EVIDENCIAS</p><div class="files">@for (file of t.adjuntos; track file.id) { <a [href]="file.archivo" target="_blank">▧ {{ file.nombre_original }}</a> } @empty { <p>Sin archivos adjuntos.</p> }</div></article>
+    </aside>
   </section>
 }

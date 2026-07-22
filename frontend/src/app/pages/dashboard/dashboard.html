@@ -14,7 +14,6 @@
     <article class="stat-card primary"><span>ACTIVOS</span><strong>{{ d.tickets_abiertos ?? d.tickets_activos ?? 0 }}</strong><small>Requieren seguimiento</small></article>
     <article class="stat-card"><span>EN PROCESO</span><strong>{{ d.tickets_en_proceso ?? 0 }}</strong><small>Atención en curso</small></article>
     <article class="stat-card"><span>RESUELTOS</span><strong>{{ d.tickets_resueltos }}</strong><small>Con solución documentada</small></article>
-    @if (auth.esRolGlobal()) { <article class="stat-card"><span>CERRADOS</span><strong>{{ d.tickets_cerrados ?? 0 }}</strong><small>Casos finalizados</small></article> }
   </section>
 
   <section class="dashboard-grid">
@@ -28,9 +27,9 @@
     </article>
     <article class="panel knowledge-callout">
       <span class="callout-icon">◇</span>
-      <p class="eyebrow">CONOCIMIENTO COMPARTIDO</p>
-      <h2>Una solución documentada evita investigar dos veces.</h2>
-      <p>Consultá diagnósticos y procedimientos publicados por el equipo.</p>
+      <p class="eyebrow">BASE DE CONOCIMIENTO</p>
+      <h2>INFORMACION UTIL PARA TI.</h2>
+      <p>Diagnósticos y procedimientos útiles.</p>
       <a class="secondary-button" routerLink="/conocimiento">Explorar conocimiento</a>
     </article>
   </section>

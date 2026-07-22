@@ -29,37 +29,29 @@ def _unir_comentarios(ticket, tipo):
 
 
 @transaction.atomic
-def crear_borrador_desde_ticket(ticket, usuario):
-    ticket = Ticket.objects.select_for_update().select_related(
+def crear_borrador_desde_ticket(ticket, usuario, exigir_permiso=True):
+    ticket = Ticket.objects.select_for_update(of=("self",)).select_related(
         "categoria", "subcategoria", "activo__tipo_activo"
     ).get(pk=ticket.pk)
-    if ticket.estado not in (Ticket.Estado.RESUELTO, Ticket.Estado.CERRADO):
-        raise OperacionConocimientoError(
-            "Solo se puede documentar conocimiento desde tickets resueltos o cerrados."
-        )
-    if not usuario_puede_documentar_ticket(usuario, ticket):
+    if exigir_permiso and not usuario_puede_documentar_ticket(usuario, ticket):
         raise OperacionConocimientoError(
             "No sos responsable técnico de este ticket."
         )
-    if ticket.articulos_conocimiento.exists():
-        raise OperacionConocimientoError(
-            "El ticket ya está relacionado con un artículo de conocimiento."
-        )
-
     diagnostico = _unir_comentarios(ticket, ComentarioTicket.Tipo.DIAGNOSTICO)
     acciones = _unir_comentarios(ticket, ComentarioTicket.Tipo.ACCION_REALIZADA)
     procedimiento = ticket.solucion.strip() or acciones
-    articulo = ArticuloConocimiento.objects.create(
-        titulo=ticket.titulo,
-        resumen=ticket.descripcion,
-        sintomas=ticket.descripcion,
-        diagnostico=diagnostico,
-        procedimiento_solucion=procedimiento,
-        categoria=ticket.categoria,
-        subcategoria=ticket.subcategoria,
-        tipo_activo=(ticket.activo.tipo_activo if ticket.activo else None),
-        autor=usuario,
-    )
+    articulo = ticket.articulos_conocimiento.order_by("fecha_creacion").first()
+    if articulo is None:
+        articulo = ArticuloConocimiento(autor=usuario)
+    articulo.titulo = ticket.titulo
+    articulo.resumen = ticket.descripcion
+    articulo.sintomas = ticket.descripcion
+    articulo.diagnostico = diagnostico
+    articulo.procedimiento_solucion = procedimiento
+    articulo.categoria = ticket.categoria
+    articulo.subcategoria = ticket.subcategoria
+    articulo.tipo_activo = ticket.activo.tipo_activo if ticket.activo else None
+    articulo.save()
     articulo.tickets_relacionados.add(ticket)
     return articulo
 
