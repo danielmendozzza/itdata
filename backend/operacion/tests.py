@@ -399,6 +399,32 @@ class TicketApiTests(TestCase):
 		)
 		self.assertEqual(response.status_code, 400)
 
+	def test_tecnico_asignado_puede_dejar_ticket_pendiente(self):
+		ticket = self.crear_ticket_reporte(Ticket.Estado.EN_PROCESO)
+		ticket.tecnico_asignado = self.tecnico
+		ticket.save(update_fields=("tecnico_asignado", "fecha_modificacion"))
+		self.client.force_authenticate(self.tecnico)
+		response = self.client.post(
+			f"/api/v1/tickets/{ticket.pk}/cambiar-estado/",
+			{"estado": Ticket.Estado.PENDIENTE, "comentario": "Atendiendo una prioridad."},
+		)
+		self.assertEqual(response.status_code, 200)
+		ticket.refresh_from_db()
+		self.assertEqual(ticket.estado, Ticket.Estado.PENDIENTE)
+
+	def test_lista_muestra_al_tecnico_como_responsable_de_ti(self):
+		ticket = self.crear_ticket_reporte(Ticket.Estado.EN_PROCESO)
+		ticket.tecnico_asignado = self.tecnico
+		ticket.save(update_fields=("tecnico_asignado", "fecha_modificacion"))
+		self.client.force_authenticate(self.admin)
+		response = self.client.get("/api/v1/tickets/")
+		self.assertEqual(response.status_code, 200)
+		item = next(
+			item for item in response.data["results"]
+			if item["id"] == str(ticket.pk)
+		)
+		self.assertEqual(item["responsable_actual_nombre"], str(self.tecnico))
+
 	def test_tecnico_documenta_diagnostico_en_ticket_asignado(self):
 		ticket = self.crear_ticket_reporte()
 		ticket.tecnico_asignado = self.tecnico

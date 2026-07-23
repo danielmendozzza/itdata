@@ -48,6 +48,7 @@ export interface TicketLista {
   estado: string;
   tecnico_asignado: string | null;
   responsable_actual: string;
+  responsable_actual_nombre: string;
   creado_por: string;
   fecha_creacion: string;
 }

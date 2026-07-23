@@ -71,6 +71,11 @@ class BaseConocimientoApiTests(TestCase):
         self.assertEqual(response.status_code, 201)
         return ArticuloConocimiento.objects.get()
 
+    def test_sucursal_no_tiene_acceso_a_base_de_conocimiento(self):
+        self.client.force_authenticate(self.usuario_sucursal)
+        response = self.client.get("/api/v1/conocimiento/articulos/")
+        self.assertEqual(response.status_code, 403)
+
     def test_tecnico_genera_borrador_documentado_desde_ticket(self):
         articulo = self.crear_borrador()
         self.assertEqual(articulo.autor, self.tecnico)

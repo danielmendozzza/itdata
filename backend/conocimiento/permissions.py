@@ -14,6 +14,8 @@ class ArticuloConocimientoPermission(BasePermission):
             return False
         if not usuario.activo_operativamente:
             return False
+        if usuario.rol == Usuario.Rol.SUCURSAL:
+            return False
         if request.method in SAFE_METHODS:
             return True
         if view.action == "create":

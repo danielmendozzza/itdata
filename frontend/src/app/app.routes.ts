@@ -1,5 +1,6 @@
 import { Routes } from '@angular/router';
 import { authGuard } from './core/auth.guard';
+import { internalModulesGuard } from './core/module-access.guard';
 
 export const routes: Routes = [
   {
@@ -32,23 +33,27 @@ export const routes: Routes = [
       },
       {
         path: 'inventario',
+        canActivate: [internalModulesGuard],
         data: { titulo: 'Inventario' },
         loadComponent: () =>
           import('./pages/inactive-module/inactive-module').then((m) => m.InactiveModulePage),
       },
       {
         path: 'proyectos',
+        canActivate: [internalModulesGuard],
         data: { titulo: 'Proyectos' },
         loadComponent: () =>
           import('./pages/inactive-module/inactive-module').then((m) => m.InactiveModulePage),
       },
       {
         path: 'conocimiento',
+        canActivate: [internalModulesGuard],
         loadComponent: () =>
           import('./pages/knowledge/knowledge').then((m) => m.KnowledgePage),
       },
       {
         path: 'conocimiento/:id',
+        canActivate: [internalModulesGuard],
         loadComponent: () =>
           import('./pages/knowledge-trace/knowledge-trace').then((m) => m.KnowledgeTracePage),
       },

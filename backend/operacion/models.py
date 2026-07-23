@@ -79,6 +79,7 @@ class Ticket(ModeloBase):
         NUEVO = "NUEVO", "Nuevo"
         ASIGNADO = "ASIGNADO", "Asignado"
         EN_PROCESO = "EN_PROCESO", "En proceso"
+        PENDIENTE = "PENDIENTE", "Pendiente"
         ESPERANDO_USUARIO = "ESPERANDO_USUARIO", "Esperando usuario"
         ESPERANDO_PROVEEDOR = "ESPERANDO_PROVEEDOR", "Esperando proveedor"
         ESPERANDO_OTRA_AREA = "ESPERANDO_OTRA_AREA", "Esperando otra área"

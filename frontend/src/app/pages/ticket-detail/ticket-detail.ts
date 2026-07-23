@@ -23,6 +23,7 @@ export class TicketDetailPage implements OnInit {
   private id = '';
   readonly estadosOperativos = [
     { value: 'EN_PROCESO', label: 'En proceso' },
+    { value: 'PENDIENTE', label: 'Pendiente' },
     { value: 'ESPERANDO_USUARIO', label: 'Esperando usuario' },
     { value: 'ESPERANDO_PROVEEDOR', label: 'Esperando proveedor' },
     { value: 'ESPERANDO_OTRA_AREA', label: 'Esperando otra área' },

@@ -25,7 +25,7 @@
           @if (errorAccion()) { <p class="action-error">{{ errorAccion() }}</p> }
         </article>
       }
-      <article class="panel info-card"><p class="eyebrow">INFORMACIÓN</p><dl><div><dt>Sucursal</dt><dd>{{ t.sucursal_nombre }}</dd></div><div><dt>Activo</dt><dd>{{ t.activo_nombre || 'Sin activo asociado' }}</dd></div><div><dt>Técnico asignado</dt><dd>{{ t.tecnico_asignado_nombre || 'Sin asignar' }}</dd></div><div><dt>Responsable actual</dt><dd>{{ texto(t.responsable_actual) }}</dd></div><div><dt>Creado por</dt><dd>{{ t.creado_por }}</dd></div><div><dt>Fecha de creación</dt><dd>{{ t.fecha_creacion | date:'dd/MM/yyyy HH:mm' }}</dd></div></dl></article>
+      <article class="panel info-card"><p class="eyebrow">INFORMACIÓN</p><dl><div><dt>Sucursal</dt><dd>{{ t.sucursal_nombre }}</dd></div><div><dt>Activo</dt><dd>{{ t.activo_nombre || 'Sin activo asociado' }}</dd></div><div><dt>Técnico asignado</dt><dd>{{ t.tecnico_asignado_nombre || 'Sin asignar' }}</dd></div><div><dt>Responsable actual</dt><dd>{{ t.responsable_actual_nombre }}</dd></div><div><dt>Creado por</dt><dd>{{ t.creado_por }}</dd></div><div><dt>Fecha de creación</dt><dd>{{ t.fecha_creacion | date:'dd/MM/yyyy HH:mm' }}</dd></div></dl></article>
       <article class="panel solution"><p class="eyebrow">SOLUCIÓN</p><p>{{ t.solucion || 'La solución aparecerá aquí cuando el caso sea resuelto.' }}</p></article>
       <article class="panel"><p class="eyebrow">EVIDENCIAS</p><div class="files">@for (file of t.adjuntos; track file.id) { <a [href]="file.archivo" target="_blank">▧ {{ file.nombre_original }}</a> } @empty { <p>Sin archivos adjuntos.</p> }</div></article>
     </aside>

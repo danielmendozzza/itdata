@@ -71,6 +71,15 @@ class TicketListSerializer(serializers.ModelSerializer):
     sucursal = serializers.StringRelatedField()
     activo = serializers.StringRelatedField()
     creado_por = serializers.StringRelatedField()
+    responsable_actual_nombre = serializers.SerializerMethodField()
+
+    def get_responsable_actual_nombre(self, ticket):
+        if (
+            ticket.responsable_actual == Ticket.ResponsableActual.TI
+            and ticket.tecnico_asignado_id
+        ):
+            return str(ticket.tecnico_asignado)
+        return ticket.get_responsable_actual_display()
 
     class Meta:
         model = Ticket
@@ -84,6 +93,7 @@ class TicketListSerializer(serializers.ModelSerializer):
             "estado",
             "tecnico_asignado",
             "responsable_actual",
+            "responsable_actual_nombre",
             "creado_por",
             "fecha_creacion",
         )
@@ -96,9 +106,18 @@ class TicketDetailSerializer(serializers.ModelSerializer):
     tecnico_asignado_nombre = serializers.StringRelatedField(
         source="tecnico_asignado", read_only=True
     )
+    responsable_actual_nombre = serializers.SerializerMethodField()
     historial = HistorialTicketSerializer(many=True, read_only=True)
     comentarios = ComentarioTicketSerializer(many=True, read_only=True)
     adjuntos = AdjuntoTicketSerializer(many=True, read_only=True)
+
+    def get_responsable_actual_nombre(self, ticket):
+        if (
+            ticket.responsable_actual == Ticket.ResponsableActual.TI
+            and ticket.tecnico_asignado_id
+        ):
+            return str(ticket.tecnico_asignado)
+        return ticket.get_responsable_actual_display()
 
     class Meta:
         model = Ticket
@@ -204,6 +223,7 @@ class CambiarEstadoTicketSerializer(serializers.Serializer):
     estado = serializers.ChoiceField(
         choices=(
             Ticket.Estado.EN_PROCESO,
+            Ticket.Estado.PENDIENTE,
             Ticket.Estado.ESPERANDO_USUARIO,
             Ticket.Estado.ESPERANDO_PROVEEDOR,
             Ticket.Estado.ESPERANDO_OTRA_AREA,
