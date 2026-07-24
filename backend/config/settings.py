@@ -12,17 +12,40 @@ https://docs.djangoproject.com/en/6.0/ref/settings/
 
 from pathlib import Path
 from decouple import config
+from django.core.exceptions import ImproperlyConfigured
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 
-SECRET_KEY = 'django-insecure-du3&fgh^j=&p24r%-c39)&$gp#@@vx!vkmc0a_eq7*12nhh$hf'
+def csv_config(name, default=""):
+    return config(
+        name,
+        default=default,
+        cast=lambda value: [
+            item.strip() for item in value.split(",") if item.strip()
+        ],
+    )
 
-# SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
 
-ALLOWED_HOSTS = []
+# Production must provide its own secret through the environment.
+DEBUG = config("DEBUG", default="development").strip().lower() in (
+    "1",
+    "true",
+    "yes",
+    "on",
+    "development",
+    "debug",
+)
+SECRET_KEY = config("SECRET_KEY", default=None)
+if not SECRET_KEY:
+    if not DEBUG:
+        raise ImproperlyConfigured(
+            "La variable de entorno SECRET_KEY es obligatoria en producción."
+        )
+    SECRET_KEY = "unsafe-local-development-key"
+
+ALLOWED_HOSTS = csv_config("ALLOWED_HOSTS", "localhost,127.0.0.1")
 
 
 # Application definition
@@ -129,8 +152,9 @@ USE_I18N = True
 
 USE_TZ = True
 
-STATIC_URL = 'static/'
-MEDIA_URL = "media/"
+STATIC_URL = "/static/"
+STATIC_ROOT = BASE_DIR / "staticfiles"
+MEDIA_URL = "/media/"
 MEDIA_ROOT = BASE_DIR / "media"
 AUTH_USER_MODEL = "usuarios.Usuario"
 
@@ -188,6 +212,16 @@ SPECTACULAR_SETTINGS = {
     },
 }
 
-CORS_ALLOWED_ORIGINS = [
-    "http://localhost:4200",
-]
+CORS_ALLOWED_ORIGINS = csv_config(
+    "CORS_ALLOWED_ORIGINS", "http://localhost:4200"
+)
+CSRF_TRUSTED_ORIGINS = csv_config("CSRF_TRUSTED_ORIGINS")
+
+SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+USE_X_FORWARDED_HOST = True
+SECURE_SSL_REDIRECT = config("SECURE_SSL_REDIRECT", default=False, cast=bool)
+SESSION_COOKIE_SECURE = SECURE_SSL_REDIRECT
+CSRF_COOKIE_SECURE = SECURE_SSL_REDIRECT
+SECURE_HSTS_SECONDS = config("SECURE_HSTS_SECONDS", default=0, cast=int)
+SECURE_HSTS_INCLUDE_SUBDOMAINS = SECURE_HSTS_SECONDS > 0
+SECURE_HSTS_PRELOAD = SECURE_HSTS_SECONDS > 0

@@ -7,6 +7,7 @@ import {
   ActivoCatalogo,
   ComentarioTicket,
   DashboardData,
+  ReporteTicketsData,
   OpcionCatalogo,
   Pagina,
   TicketDetalle,
@@ -25,6 +26,16 @@ export class ApiService {
     );
   }
 
+  dashboardGestion(filtros: Record<string, string>) {
+    const params = this.crearParametros(filtros);
+    return this.http.get<DashboardData>(`${this.base}/dashboard/general/`, { params });
+  }
+
+  reporteTickets(filtros: Record<string, string>) {
+    const params = this.crearParametros(filtros);
+    return this.http.get<ReporteTicketsData>(`${this.base}/reportes/tickets/`, { params });
+  }
+
   tickets(filtros: Record<string, string>) {
     let params = new HttpParams();
     Object.entries(filtros).forEach(([clave, valor]) => {
@@ -35,6 +46,34 @@ export class ApiService {
 
   ticket(id: string) {
     return this.http.get<TicketDetalle>(`${this.base}/tickets/${id}/`);
+  }
+
+  aperturas(filtros: Record<string, string>) {
+    return this.http.get<Pagina<TicketLista>>(`${this.base}/aperturas/`, {
+      params: this.crearParametros(filtros),
+    });
+  }
+
+  apertura(id: string) {
+    return this.http.get<TicketDetalle>(`${this.base}/aperturas/${id}/`);
+  }
+
+  crearApertura(titulo: string) {
+    return this.http.post<TicketDetalle>(`${this.base}/aperturas/`, { titulo });
+  }
+
+  cambiarEstadoApertura(id: string, estado: string, comentario = '') {
+    return this.http.post<TicketDetalle>(
+      `${this.base}/aperturas/${id}/cambiar-estado/`,
+      { estado, comentario },
+    );
+  }
+
+  agregarComentarioApertura(id: string, texto: string) {
+    return this.http.post<ComentarioTicket>(
+      `${this.base}/aperturas/${id}/comentarios/`,
+      { tipo: 'NOTA', texto },
+    );
   }
 
   agregarComentario(id: string, tipo: string, texto: string) {
@@ -203,5 +242,13 @@ export class ApiService {
     return this.http.get<ActivoCatalogo[]>(`${this.base}/catalogos/activos/`, {
       params: new HttpParams().set('sucursal', sucursal),
     });
+  }
+
+  private crearParametros(filtros: Record<string, string>): HttpParams {
+    let params = new HttpParams();
+    Object.entries(filtros).forEach(([clave, valor]) => {
+      if (valor) params = params.set(clave, valor);
+    });
+    return params;
   }
 }

@@ -7,6 +7,9 @@
     <nav>
       <a routerLink="/dashboard" routerLinkActive="active" (click)="menuAbierto.set(false)"><i>⌂</i> Dashboard</a>
       <a routerLink="/tickets" routerLinkActive="active" (click)="menuAbierto.set(false)"><i>▤</i> Tickets</a>
+      @if (auth.puedeGestionarAperturas()) {
+        <a routerLink="/aperturas" routerLinkActive="active" (click)="menuAbierto.set(false)"><i>＋</i> Aperturas</a>
+      }
       @if (auth.usuario()?.rol !== 'SUCURSAL') {
         <a routerLink="/inventario" routerLinkActive="active" (click)="menuAbierto.set(false)"><i>▦</i> Inventario</a>
         <a routerLink="/proyectos" routerLinkActive="active" (click)="menuAbierto.set(false)"><i>◆</i> Proyectos</a>

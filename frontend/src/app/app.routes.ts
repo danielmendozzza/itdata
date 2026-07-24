@@ -1,6 +1,6 @@
 import { Routes } from '@angular/router';
 import { authGuard } from './core/auth.guard';
-import { internalModulesGuard } from './core/module-access.guard';
+import { aperturasGuard, internalModulesGuard, reportsGuard } from './core/module-access.guard';
 
 export const routes: Routes = [
   {
@@ -18,6 +18,14 @@ export const routes: Routes = [
         loadComponent: () => import('./pages/dashboard/dashboard').then((m) => m.DashboardPage),
       },
       {
+        path: 'dashboard/gestion',
+        canActivate: [reportsGuard],
+        loadComponent: () =>
+          import('./pages/management-dashboard/management-dashboard').then(
+            (m) => m.ManagementDashboardPage,
+          ),
+      },
+      {
         path: 'tickets',
         loadComponent: () => import('./pages/tickets/tickets').then((m) => m.TicketsPage),
       },
@@ -30,6 +38,24 @@ export const routes: Routes = [
         path: 'tickets/:id',
         loadComponent: () =>
           import('./pages/ticket-detail/ticket-detail').then((m) => m.TicketDetailPage),
+      },
+      {
+        path: 'aperturas',
+        canActivate: [aperturasGuard],
+        loadComponent: () =>
+          import('./pages/openings/openings').then((m) => m.OpeningsPage),
+      },
+      {
+        path: 'aperturas/nueva',
+        canActivate: [aperturasGuard],
+        loadComponent: () =>
+          import('./pages/opening-create/opening-create').then((m) => m.OpeningCreatePage),
+      },
+      {
+        path: 'aperturas/:id',
+        canActivate: [aperturasGuard],
+        loadComponent: () =>
+          import('./pages/opening-detail/opening-detail').then((m) => m.OpeningDetailPage),
       },
       {
         path: 'inventario',

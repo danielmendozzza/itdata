@@ -3,6 +3,7 @@ from django.urls import path
 
 from .views import (
     CategoriaViewSet,
+    AperturaViewSet,
     DashboardGeneralView,
     DashboardPersonalView,
     ReporteTicketsView,
@@ -12,6 +13,7 @@ from .views import (
 
 router = DefaultRouter()
 router.register(r"tickets", TicketViewSet, basename="ticket")
+router.register(r"aperturas", AperturaViewSet, basename="apertura")
 router.register(r"catalogos/categorias", CategoriaViewSet, basename="categoria")
 router.register(r"catalogos/subcategorias", SubcategoriaViewSet, basename="subcategoria")
 

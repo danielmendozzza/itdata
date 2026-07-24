@@ -23,6 +23,25 @@ class PuedeVerReportes(BasePermission):
         )
 
 
+class PuedeGestionarAperturas(BasePermission):
+    message = "Tu rol no tiene acceso al módulo de aperturas."
+
+    def has_permission(self, request, view):
+        usuario = request.user
+        return bool(
+            usuario
+            and usuario.is_authenticated
+            and usuario.is_active
+            and usuario.activo_operativamente
+            and usuario.rol
+            in (
+                Usuario.Rol.ADMINISTRADOR,
+                Usuario.Rol.SUPERVISOR,
+                Usuario.Rol.TECNICO,
+            )
+        )
+
+
 class PuedeAdministrarCatalogos(BasePermission):
     message = "Solo Administradores y Supervisores pueden modificar categorías."
 

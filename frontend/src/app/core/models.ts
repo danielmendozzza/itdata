@@ -42,7 +42,7 @@ export interface TicketLista {
   id: string;
   codigo: string;
   titulo: string;
-  sucursal: string;
+  sucursal: string | null;
   activo: string | null;
   prioridad_final: string;
   estado: string;
@@ -72,7 +72,7 @@ export interface ComentarioTicket {
 export interface TicketDetalle extends TicketLista {
   descripcion: string;
   solucion: string;
-  sucursal_nombre: string;
+  sucursal_nombre: string | null;
   activo_nombre: string | null;
   tecnico_asignado_nombre: string | null;
   historial: MovimientoTicket[];
@@ -93,7 +93,24 @@ export interface DashboardData {
   tickets_en_proceso?: number;
   tickets_resueltos: number;
   tickets_activos?: number;
+  tickets_criticos_abiertos?: number;
+  esperando_terceros?: number;
+  aperturas_pendientes?: number;
+  aperturas_concretadas?: number;
+  tiempo_promedio_resolucion_segundos?: number | null;
   por_estado: Array<{ estado: string; total: number }>;
+  evolucion_diaria?: Array<{ fecha: string; creados: number; resueltos: number }>;
+}
+
+export interface ReporteTicketsData {
+  total: number;
+  por_estado: Array<{ estado: string; total: number }>;
+  por_prioridad: Array<{ prioridad_final: string; total: number }>;
+  por_responsable: Array<{ responsable_actual: string; total: number }>;
+  por_sucursal: Array<{ sucursal__nombre: string; total: number }>;
+  por_categoria: Array<{ categoria__nombre: string; total: number }>;
+  por_tecnico: Array<{ tecnico_asignado__username: string | null; total: number }>;
+  tiempo_promedio_resolucion_segundos: number | null;
 }
 
 export interface ArticuloConocimiento {

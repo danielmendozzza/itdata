@@ -507,6 +507,82 @@ class TicketApiTests(TestCase):
 		self.assertEqual(response.data["tickets_resueltos"], 1)
 
 
+class AperturasApiTests(TestCase):
+	def setUp(self):
+		NumeradorDocumento.objects.create(
+			clave="TICKET", nombre="Tickets", prefijo="ITD"
+		)
+		Usuario = get_user_model()
+		self.tecnico_uno = Usuario.objects.create_user(
+			username="tecnico_apertura_1", rol=Usuario.Rol.TECNICO
+		)
+		self.tecnico_dos = Usuario.objects.create_user(
+			username="tecnico_apertura_2", rol=Usuario.Rol.TECNICO
+		)
+		self.sucursal = Usuario.objects.create_user(
+			username="sucursal_apertura", rol=Usuario.Rol.SUCURSAL
+		)
+		self.client = APIClient()
+
+	def test_crea_apertura_solo_con_titulo_y_en_proceso(self):
+		self.client.force_authenticate(self.tecnico_uno)
+		response = self.client.post(
+			"/api/v1/aperturas/", {"titulo": "Apertura nuevo local"}
+		)
+		self.assertEqual(response.status_code, 201)
+		apertura = Ticket.objects.get(pk=response.data["id"])
+		self.assertEqual(apertura.tipo, Ticket.Tipo.APERTURA)
+		self.assertEqual(apertura.estado, Ticket.Estado.EN_PROCESO)
+		self.assertIsNone(apertura.tecnico_asignado_id)
+		self.assertIsNone(apertura.sucursal_id)
+		self.assertEqual(apertura.historial.count(), 1)
+
+	def test_cualquier_tecnico_puede_gestionar_la_apertura(self):
+		apertura = Ticket.objects.create(
+			titulo="Apertura compartida",
+			tipo=Ticket.Tipo.APERTURA,
+			descripcion="",
+			estado=Ticket.Estado.EN_PROCESO,
+			creado_por=self.tecnico_uno,
+		)
+		self.client.force_authenticate(self.tecnico_dos)
+		response = self.client.post(
+			f"/api/v1/aperturas/{apertura.pk}/cambiar-estado/",
+			{"estado": Ticket.Estado.EN_PRUEBAS, "comentario": "Equipos instalados."},
+		)
+		self.assertEqual(response.status_code, 200)
+		apertura.refresh_from_db()
+		self.assertEqual(apertura.estado, Ticket.Estado.EN_PRUEBAS)
+
+	def test_realizado_es_final_y_registra_responsable(self):
+		apertura = Ticket.objects.create(
+			titulo="Apertura final",
+			tipo=Ticket.Tipo.APERTURA,
+			descripcion="",
+			estado=Ticket.Estado.EN_PRUEBAS,
+			creado_por=self.tecnico_uno,
+		)
+		self.client.force_authenticate(self.tecnico_dos)
+		response = self.client.post(
+			f"/api/v1/aperturas/{apertura.pk}/cambiar-estado/",
+			{"estado": Ticket.Estado.REALIZADO},
+		)
+		self.assertEqual(response.status_code, 200)
+		apertura.refresh_from_db()
+		self.assertEqual(apertura.resuelto_por, self.tecnico_dos)
+		self.assertIsNotNone(apertura.fecha_resolucion)
+		response = self.client.post(
+			f"/api/v1/aperturas/{apertura.pk}/cambiar-estado/",
+			{"estado": Ticket.Estado.EN_PROCESO},
+		)
+		self.assertEqual(response.status_code, 400)
+
+	def test_sucursal_no_puede_acceder_a_aperturas(self):
+		self.client.force_authenticate(self.sucursal)
+		response = self.client.get("/api/v1/aperturas/")
+		self.assertEqual(response.status_code, 403)
+
+
 class CatalogosConfiguracionApiTests(TestCase):
 	def setUp(self):
 		Usuario = get_user_model()

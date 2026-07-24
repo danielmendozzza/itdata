@@ -182,6 +182,37 @@ class TicketCreateSerializer(serializers.ModelSerializer):
         return sucursal
 
 
+class AperturaCreateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Ticket
+        fields = ("id", "codigo", "titulo", "estado", "fecha_creacion")
+        read_only_fields = ("id", "codigo", "estado", "fecha_creacion")
+
+    def create(self, validated_data):
+        return Ticket.objects.create(
+            **validated_data,
+            tipo=Ticket.Tipo.APERTURA,
+            descripcion="",
+            estado=Ticket.Estado.EN_PROCESO,
+            origen=Ticket.Origen.TECNICO,
+            creado_por=self.context["request"].user,
+        )
+
+
+class CambiarEstadoAperturaSerializer(serializers.Serializer):
+    estado = serializers.ChoiceField(
+        choices=(
+            Ticket.Estado.EN_PROCESO,
+            Ticket.Estado.ESPERANDO_PROVEEDOR,
+            Ticket.Estado.EN_PRUEBAS,
+            Ticket.Estado.REALIZADO,
+        )
+    )
+    comentario = serializers.CharField(
+        required=False, allow_blank=True, trim_whitespace=True
+    )
+
+
 class TicketUpdateSerializer(serializers.ModelSerializer):
     class Meta:
         model = Ticket
@@ -253,6 +284,11 @@ class DashboardGeneralResponseSerializer(serializers.Serializer):
     tickets_abiertos = serializers.IntegerField()
     tickets_en_proceso = serializers.IntegerField()
     tickets_resueltos = serializers.IntegerField()
+    tickets_criticos_abiertos = serializers.IntegerField()
+    esperando_terceros = serializers.IntegerField()
+    aperturas_pendientes = serializers.IntegerField()
+    aperturas_concretadas = serializers.IntegerField()
+    tiempo_promedio_resolucion_segundos = serializers.FloatField(allow_null=True)
     por_estado = serializers.ListField(child=serializers.DictField())
     evolucion_diaria = serializers.ListField(child=serializers.DictField())
 
@@ -260,4 +296,6 @@ class DashboardGeneralResponseSerializer(serializers.Serializer):
 class DashboardPersonalResponseSerializer(serializers.Serializer):
     tickets_activos = serializers.IntegerField()
     tickets_resueltos = serializers.IntegerField()
+    aperturas_pendientes = serializers.IntegerField()
+    aperturas_concretadas = serializers.IntegerField()
     por_estado = serializers.ListField(child=serializers.DictField())

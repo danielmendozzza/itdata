@@ -42,32 +42,33 @@ def obtener_tickets_visibles_para_usuario(usuario):
     Devuelve un queryset de `Ticket` que el usuario puede ver.
     """
     from .models import Ticket
+    base = Ticket.objects.filter(tipo=Ticket.Tipo.INCIDENCIA)
 
     if not usuario or not usuario.is_authenticated:
-        return Ticket.objects.none()
+        return base.none()
 
     if not usuario.activo_operativamente:
-        return Ticket.objects.none()
+        return base.none()
 
     if usuario.rol in (
         Usuario.Rol.ADMINISTRADOR,
         Usuario.Rol.SUPERVISOR,
         Usuario.Rol.TECNICO,
     ):
-        return Ticket.objects.all()
+        return base
 
     if usuario.rol == Usuario.Rol.JDISTRITO:
-        return Ticket.objects.filter(
+        return base.filter(
             sucursal__in=usuario.sucursales_asignadas.all()
         )
 
     if usuario.rol == Usuario.Rol.SUCURSAL:
-        return Ticket.objects.filter(sucursal_id=usuario.sucursal_id)
+        return base.filter(sucursal_id=usuario.sucursal_id)
 
     if usuario.rol == Usuario.Rol.CONSULTOR:
-        return Ticket.objects.all()
+        return base
 
-    return Ticket.objects.none()
+    return base.none()
 
 
 def obtener_tickets_propios_para_dashboard(usuario):

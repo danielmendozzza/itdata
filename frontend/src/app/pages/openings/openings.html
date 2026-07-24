@@ -1,0 +1,9 @@
+<section class="page-heading"><div><p class="eyebrow">OPERACIÓN</p><h1>Aperturas</h1><p>{{ total() }} aperturas documentadas.</p></div><a class="primary-button" routerLink="/aperturas/nueva">+ Nueva apertura</a></section>
+<section class="filters"><div class="search-box">⌕<input [(ngModel)]="search" (keyup.enter)="cargar()" placeholder="Buscar por código o título"></div><select [(ngModel)]="estado" (change)="cargar()"><option value="">Todos los estados</option><option value="EN_PROCESO">En proceso</option><option value="ESPERANDO_PROVEEDOR">Esperando proveedor</option><option value="EN_PRUEBAS">En pruebas</option><option value="REALIZADO">Realizado</option></select><button (click)="cargar()">Filtrar</button></section>
+<section class="table-card">
+  @if (cargando()) {<p class="empty">Cargando aperturas…</p>}
+  @else {<div class="table-wrap"><table><thead><tr><th>Apertura</th><th>Estado</th><th>Creada por</th><th>Fecha</th><th></th></tr></thead><tbody>
+    @for (item of aperturas(); track item.id) {<tr><td><a [routerLink]="['/aperturas', item.id]"><strong>{{ item.codigo }}</strong><span>{{ item.titulo }}</span></a></td><td><span class="status" [class.realizado]="item.estado === 'REALIZADO'">{{ texto(item.estado) }}</span></td><td>{{ item.creado_por }}</td><td>{{ item.fecha_creacion | date:'dd/MM/yy HH:mm' }}</td><td><a class="arrow" [routerLink]="['/aperturas', item.id]">→</a></td></tr>}
+    @empty {<tr><td colspan="5" class="empty">Todavía no hay aperturas registradas.</td></tr>}
+  </tbody></table></div>}
+</section>

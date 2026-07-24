@@ -64,6 +64,18 @@ export class AuthService {
     return ['ADMINISTRADOR', 'SUPERVISOR'].includes(this.usuarioSignal()?.rol ?? '');
   }
 
+  puedeVerReportes(): boolean {
+    return ['ADMINISTRADOR', 'SUPERVISOR', 'CONSULTOR'].includes(
+      this.usuarioSignal()?.rol ?? '',
+    );
+  }
+
+  puedeGestionarAperturas(): boolean {
+    return ['ADMINISTRADOR', 'SUPERVISOR', 'TECNICO'].includes(
+      this.usuarioSignal()?.rol ?? '',
+    );
+  }
+
   private guardarTokens(tokens: TokenResponse): void {
     localStorage.setItem('itdata_access', tokens.access);
     localStorage.setItem('itdata_refresh', tokens.refresh);

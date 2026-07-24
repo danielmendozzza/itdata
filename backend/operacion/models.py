@@ -75,6 +75,10 @@ class Subcategoria(ModeloBase):
 
 class Ticket(ModeloBase):
 
+    class Tipo(models.TextChoices):
+        INCIDENCIA = "INCIDENCIA", "Incidencia"
+        APERTURA = "APERTURA", "Apertura"
+
     class Estado(models.TextChoices):
         NUEVO = "NUEVO", "Nuevo"
         ASIGNADO = "ASIGNADO", "Asignado"
@@ -84,6 +88,7 @@ class Ticket(ModeloBase):
         ESPERANDO_PROVEEDOR = "ESPERANDO_PROVEEDOR", "Esperando proveedor"
         ESPERANDO_OTRA_AREA = "ESPERANDO_OTRA_AREA", "Esperando otra área"
         EN_PRUEBAS = "EN_PRUEBAS", "En pruebas"
+        REALIZADO = "REALIZADO", "Realizado"
         RESUELTO = "RESUELTO", "Resuelto"
         CANCELADO = "CANCELADO", "Cancelado"
 
@@ -126,12 +131,20 @@ class Ticket(ModeloBase):
         max_length=150,
     )
 
-    descripcion = models.TextField()
+    tipo = models.CharField(
+        max_length=20,
+        choices=Tipo.choices,
+        default=Tipo.INCIDENCIA,
+    )
+
+    descripcion = models.TextField(blank=True)
 
     sucursal = models.ForeignKey(
         Sucursal,
         on_delete=models.PROTECT,
         related_name="tickets",
+        null=True,
+        blank=True,
     )
 
     activo = models.ForeignKey(
@@ -146,6 +159,8 @@ class Ticket(ModeloBase):
         Categoria,
         on_delete=models.PROTECT,
         related_name="tickets",
+        null=True,
+        blank=True,
     )
 
     subcategoria = models.ForeignKey(
@@ -262,6 +277,14 @@ class Ticket(ModeloBase):
 
     def clean(self):
         errores = {}
+
+        if self.tipo == self.Tipo.INCIDENCIA:
+            if not self.descripcion:
+                errores["descripcion"] = "La descripción es obligatoria."
+            if not self.sucursal_id:
+                errores["sucursal"] = "La sucursal es obligatoria."
+            if not self.categoria_id:
+                errores["categoria"] = "La categoría es obligatoria."
 
         if self.activo and self.activo.sucursal:
             if self.activo.sucursal_id != self.sucursal_id:

@@ -1,0 +1,12 @@
+<a class="back-link" routerLink="/aperturas">← Volver a aperturas</a>
+<section class="form-card">
+  <p class="eyebrow">NUEVA APERTURA</p>
+  <h1>Registrar apertura de local</h1>
+  <p>Se creará en estado “En proceso” y estará disponible para todo el equipo técnico.</p>
+  <form [formGroup]="form" (ngSubmit)="guardar()">
+    <label>Título<input formControlName="titulo" maxlength="150" autofocus placeholder="Ej.: Apertura Shopping del Sol"></label>
+    @if (form.controls.titulo.touched && form.controls.titulo.invalid) {<small class="field-error">Ingresá un título para la apertura.</small>}
+    @if (error()) {<div class="error-card">{{ error() }}</div>}
+    <div class="actions"><a routerLink="/aperturas">Cancelar</a><button class="primary-button" type="submit" [disabled]="form.invalid || guardando()">{{ guardando() ? 'Creando…' : 'Crear apertura' }}</button></div>
+  </form>
+</section>

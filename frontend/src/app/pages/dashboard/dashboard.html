@@ -4,7 +4,12 @@
     <h1>Buen día, {{ auth.usuario()?.first_name || auth.usuario()?.username }}</h1>
     <p>Resumen de la actividad de soporte y documentación técnica.</p>
   </div>
-  <div class="date-chip">{{ hoy | date:'EEEE, d MMMM':'':'es' }}</div>
+  <div class="heading-actions">
+    @if (auth.puedeVerReportes()) {
+      <a class="management-button" routerLink="/dashboard/gestion">Informe de gestión →</a>
+    }
+    <div class="date-chip">{{ hoy | date:'EEEE, d MMMM':'':'es' }}</div>
+  </div>
 </section>
 
 @if (cargando()) {

@@ -9,6 +9,7 @@ from django.db.models import Avg, Count, DurationField, ExpressionWrapper, F
 from django.db.models.functions import TruncDate
 from drf_spectacular.types import OpenApiTypes
 from drf_spectacular.utils import OpenApiParameter, extend_schema
+from usuarios.models import Usuario
 
 from .models import Categoria, Subcategoria, Ticket
 from . import selectors
@@ -19,6 +20,8 @@ from .serializers import (
 	TicketUpdateSerializer,
 	AsignarTicketSerializer,
 	AdjuntoTicketSerializer,
+	AperturaCreateSerializer,
+	CambiarEstadoAperturaSerializer,
 	CambiarEstadoTicketSerializer,
 	ComentarioTicketSerializer,
 	DashboardGeneralResponseSerializer,
@@ -29,12 +32,18 @@ from .serializers import (
 	SubcategoriaSerializer,
 )
 from .filters import TicketFilter
-from .permissions import PuedeAdministrarCatalogos, PuedeVerReportes, TicketPermission
+from .permissions import (
+	PuedeAdministrarCatalogos,
+	PuedeGestionarAperturas,
+	PuedeVerReportes,
+	TicketPermission,
+)
 from .services import (
 	TransicionTicketError,
 	agregar_adjunto_ticket,
 	agregar_comentario_ticket,
 	asignar_ticket,
+	cambiar_estado_apertura,
 	cambiar_estado_ticket,
 	crear_movimiento_historial,
 	resolver_ticket,
@@ -325,6 +334,79 @@ class TicketViewSet(viewsets.ModelViewSet):
 		return Response(status=204)
 
 
+class AperturaViewSet(viewsets.ModelViewSet):
+	queryset = Ticket.objects.filter(tipo=Ticket.Tipo.APERTURA)
+	permission_classes = (PuedeGestionarAperturas,)
+	http_method_names = ("get", "post", "head", "options")
+	search_fields = ("codigo", "titulo")
+	filterset_fields = ("estado",)
+	ordering_fields = ("numero", "fecha_creacion")
+	ordering = ("-numero",)
+
+	def get_queryset(self):
+		return (
+			Ticket.objects.filter(tipo=Ticket.Tipo.APERTURA)
+			.select_related("creado_por", "resuelto_por")
+			.prefetch_related("historial", "comentarios")
+		)
+
+	def get_serializer_class(self):
+		if self.action == "create":
+			return AperturaCreateSerializer
+		if self.action == "cambiar_estado":
+			return CambiarEstadoAperturaSerializer
+		if self.action == "comentarios":
+			return ComentarioTicketSerializer
+		if self.action == "list":
+			return TicketListSerializer
+		return TicketDetailSerializer
+
+	def perform_create(self, serializer):
+		apertura = serializer.save()
+		crear_movimiento_historial(
+			ticket=apertura,
+			usuario=self.request.user,
+			tipo_movimiento=HistorialTicket.TipoMovimiento.CREACION,
+			comentario="Apertura creada.",
+			estado_nuevo=apertura.estado,
+		)
+
+	def _detalle(self, apertura):
+		return Response(TicketDetailSerializer(apertura).data)
+
+	@action(detail=True, methods=("post",), url_path="cambiar-estado")
+	def cambiar_estado(self, request, pk=None):
+		serializer = self.get_serializer(data=request.data)
+		serializer.is_valid(raise_exception=True)
+		try:
+			apertura = cambiar_estado_apertura(
+				self.get_object(),
+				serializer.validated_data["estado"],
+				request.user,
+				serializer.validated_data.get("comentario", ""),
+			)
+		except TransicionTicketError as error:
+			raise ValidationError({"detail": str(error)}) from error
+		return self._detalle(apertura)
+
+	@action(detail=True, methods=("get", "post"))
+	def comentarios(self, request, pk=None):
+		apertura = self.get_object()
+		if request.method == "GET":
+			return Response(
+				ComentarioTicketSerializer(apertura.comentarios.all(), many=True).data
+			)
+		serializer = self.get_serializer(data=request.data)
+		serializer.is_valid(raise_exception=True)
+		comentario = agregar_comentario_ticket(
+			ticket=apertura,
+			usuario=request.user,
+			tipo=serializer.validated_data["tipo"],
+			texto=serializer.validated_data["texto"],
+		)
+		return Response(ComentarioTicketSerializer(comentario).data, status=201)
+
+
 def _queryset_filtrado(request):
 	queryset = selectors.obtener_tickets_visibles_para_usuario(request.user)
 	filtro = TicketFilter(request.query_params, queryset=queryset)
@@ -406,24 +488,77 @@ class DashboardGeneralView(APIView):
 			return Response(errores, status=400)
 
 		cerrados = (Ticket.Estado.RESUELTO, Ticket.Estado.CANCELADO)
-		evolucion = list(
+		creados = list(
 			queryset.annotate(fecha=TruncDate("fecha_creacion"))
 			.values("fecha")
-			.annotate(total=Count("id"))
+			.annotate(creados=Count("id"))
 			.order_by("fecha")
+		)
+		resueltos = list(
+			queryset.filter(fecha_resolucion__isnull=False)
+			.annotate(fecha=TruncDate("fecha_resolucion"))
+			.values("fecha")
+			.annotate(resueltos=Count("id"))
+			.order_by("fecha")
+		)
+		evolucion_por_fecha = {
+			item["fecha"]: {
+				"fecha": item["fecha"],
+				"creados": item["creados"],
+				"resueltos": 0,
+			}
+			for item in creados
+		}
+		for item in resueltos:
+			evolucion_por_fecha.setdefault(
+				item["fecha"],
+				{"fecha": item["fecha"], "creados": 0, "resueltos": 0},
+			)["resueltos"] = item["resueltos"]
+
+		duracion = ExpressionWrapper(
+			F("fecha_resolucion") - F("fecha_creacion"),
+			output_field=DurationField(),
+		)
+		promedio = queryset.filter(fecha_resolucion__isnull=False).aggregate(
+			valor=Avg(duracion)
+		)["valor"]
+		abiertos = queryset.exclude(estado__in=cerrados)
+		aperturas = Ticket.objects.filter(tipo=Ticket.Tipo.APERTURA)
+		estados_terceros = (
+			Ticket.Estado.ESPERANDO_PROVEEDOR,
+			Ticket.Estado.ESPERANDO_OTRA_AREA,
+			Ticket.Estado.ESPERANDO_USUARIO,
 		)
 		return Response(
 			{
 				"tickets_total": queryset.count(),
-				"tickets_abiertos": queryset.exclude(estado__in=cerrados).count(),
+				"tickets_abiertos": abiertos.count(),
 				"tickets_en_proceso": queryset.filter(
 					estado=Ticket.Estado.EN_PROCESO
 				).count(),
 				"tickets_resueltos": queryset.filter(
 					estado=Ticket.Estado.RESUELTO
 				).count(),
+				"tickets_criticos_abiertos": abiertos.filter(
+					prioridad_final=Ticket.Prioridad.CRITICA
+				).count(),
+				"esperando_terceros": abiertos.filter(
+					estado__in=estados_terceros
+				).count(),
+				"aperturas_pendientes": aperturas.exclude(
+					estado=Ticket.Estado.REALIZADO
+				).count(),
+				"aperturas_concretadas": aperturas.filter(
+					estado=Ticket.Estado.REALIZADO
+				).count(),
+				"tiempo_promedio_resolucion_segundos": (
+					promedio.total_seconds() if promedio else None
+				),
 				"por_estado": _conteos(queryset, "estado"),
-				"evolucion_diaria": evolucion,
+				"evolucion_diaria": [
+					evolucion_por_fecha[fecha]
+					for fecha in sorted(evolucion_por_fecha)
+				],
 			}
 		)
 
@@ -438,10 +573,26 @@ class DashboardPersonalView(APIView):
 		queryset = selectors.obtener_tickets_propios_para_dashboard(request.user)
 		finalizados = (Ticket.Estado.RESUELTO,)
 		no_activos = finalizados + (Ticket.Estado.CANCELADO,)
+		puede_ver_aperturas = request.user.rol in (
+			Usuario.Rol.ADMINISTRADOR,
+			Usuario.Rol.SUPERVISOR,
+			Usuario.Rol.TECNICO,
+		)
+		aperturas = (
+			Ticket.objects.filter(tipo=Ticket.Tipo.APERTURA)
+			if puede_ver_aperturas
+			else Ticket.objects.none()
+		)
 		return Response(
 			{
 				"tickets_activos": queryset.exclude(estado__in=no_activos).count(),
 				"tickets_resueltos": queryset.filter(estado__in=finalizados).count(),
+				"aperturas_pendientes": aperturas.exclude(
+					estado=Ticket.Estado.REALIZADO
+				).count(),
+				"aperturas_concretadas": aperturas.filter(
+					estado=Ticket.Estado.REALIZADO
+				).count(),
 				"por_estado": _conteos(queryset, "estado"),
 			}
 		)

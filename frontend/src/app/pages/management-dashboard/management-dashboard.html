@@ -1,0 +1,55 @@
+<section class="page-heading">
+  <div>
+    <a class="back-link" routerLink="/dashboard">← Dashboard</a>
+    <p class="eyebrow">INFORME DE GESTIÓN</p>
+    <h1>Operación de TI</h1>
+    <p>Volumen, resolución y puntos donde se concentra o demora el trabajo.</p>
+  </div>
+</section>
+
+<section class="filters panel">
+  <label>Desde<input type="date" [(ngModel)]="fechaDesde"></label>
+  <label>Hasta<input type="date" [(ngModel)]="fechaHasta"></label>
+  <label>Sucursal<select [(ngModel)]="sucursal"><option value="">Todas</option>@for (item of sucursales(); track item.id) {<option [value]="item.id">{{ item.nombre }}</option>}</select></label>
+  <label>Técnico<select [(ngModel)]="tecnico"><option value="">Todos</option>@for (item of tecnicos(); track item.id) {<option [value]="item.id">{{ item.nombre_completo }}</option>}</select></label>
+  <label>Estado<select [(ngModel)]="estado"><option value="">Todos</option><option value="NUEVO">Nuevo</option><option value="ASIGNADO">Asignado</option><option value="EN_PROCESO">En proceso</option><option value="PENDIENTE">Pendiente</option><option value="ESPERANDO_USUARIO">Esperando usuario</option><option value="ESPERANDO_PROVEEDOR">Esperando proveedor</option><option value="ESPERANDO_OTRA_AREA">Esperando otra área</option><option value="RESUELTO">Resuelto</option></select></label>
+  <div class="filter-actions"><button class="primary-button" (click)="cargar()">Aplicar</button><button class="text-button" (click)="limpiar()">Limpiar</button></div>
+</section>
+
+@if (cargando()) {
+  <div class="loading">Preparando el informe…</div>
+} @else if (error()) {
+  <div class="error-card">{{ error() }}</div>
+} @else if (resumen(); as d) {
+  <section class="stats-grid">
+    <article class="stat-card primary"><span>TOTAL CREADOS</span><strong>{{ d.tickets_total ?? 0 }}</strong><small>En el periodo</small></article>
+    <article class="stat-card"><span>PENDIENTES</span><strong>{{ d.tickets_abiertos ?? 0 }}</strong><small>Requieren seguimiento</small></article>
+    <article class="stat-card"><span>RESUELTOS</span><strong>{{ d.tickets_resueltos }}</strong><small>En el periodo</small></article>
+    <article class="stat-card warning"><span>CRÍTICOS ABIERTOS</span><strong>{{ d.tickets_criticos_abiertos ?? 0 }}</strong><small>Prioridad inmediata</small></article>
+    <article class="stat-card opening-pending"><span>APERTURAS PENDIENTES</span><strong>{{ d.aperturas_pendientes ?? 0 }}</strong><small>Locales en preparación</small></article>
+    <article class="stat-card opening-done"><span>APERTURAS CONCRETADAS</span><strong>{{ d.aperturas_concretadas ?? 0 }}</strong><small>Locales realizados</small></article>
+  </section>
+
+  @if (graficoExpandido()) {
+    <button class="chart-backdrop" aria-label="Cerrar gráfico ampliado" (click)="graficoExpandido.set(null)"></button>
+  }
+  <section class="charts-grid">
+    <article class="panel evolution chart-panel" [class.chart-expanded]="graficoExpandido() === 'evolucion'" (click)="graficoExpandido.set('evolucion')">
+      @if (graficoExpandido() === 'evolucion') {<button class="chart-close" (click)="$event.stopPropagation(); graficoExpandido.set(null)" aria-label="Cerrar">×</button>}
+      <div class="panel-heading"><div><p class="eyebrow">EVOLUCIÓN</p><h2>Creados vs. resueltos</h2></div></div>
+      <app-plotly-chart kind="evolucion" [evolucion]="d.evolucion_diaria ?? []" [expanded]="graficoExpandido() === 'evolucion'" />
+    </article>
+    <article class="panel chart-panel" [class.chart-expanded]="graficoExpandido() === 'estados'" (click)="graficoExpandido.set('estados')">
+      @if (graficoExpandido() === 'estados') {<button class="chart-close" (click)="$event.stopPropagation(); graficoExpandido.set(null)" aria-label="Cerrar">×</button>}
+      <p class="eyebrow">DISTRIBUCIÓN</p><h2>Tickets por estado</h2>
+      <app-plotly-chart kind="estados" [estados]="d.por_estado" [expanded]="graficoExpandido() === 'estados'" />
+    </article>
+  </section>
+}
+
+@if (reporte(); as r) {
+  <section class="breakdowns">
+    <article class="panel"><p class="eyebrow">DEMANDA</p><h2>Top sucursales</h2><div class="rank-list">@for (item of r.por_sucursal.slice(0, 10); track item.sucursal__nombre) {<div><span>{{ item.sucursal__nombre }}</span><strong>{{ item.total }}</strong></div>} @empty {<p class="empty">Sin datos.</p>}</div></article>
+    <article class="panel"><p class="eyebrow">CAUSAS</p><h2>Tickets por categoría</h2><div class="rank-list">@for (item of r.por_categoria.slice(0, 10); track item.categoria__nombre) {<div><span>{{ item.categoria__nombre }}</span><strong>{{ item.total }}</strong></div>} @empty {<p class="empty">Sin datos.</p>}</div></article>
+  </section>
+}

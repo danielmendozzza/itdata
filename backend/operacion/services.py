@@ -131,6 +131,45 @@ def cambiar_estado_ticket(ticket, estado, usuario, comentario=""):
 
 
 @transaction.atomic
+def cambiar_estado_apertura(ticket, estado, usuario, comentario=""):
+    from .models import HistorialTicket, Ticket
+
+    ticket = Ticket.objects.select_for_update().get(
+        pk=ticket.pk, tipo=Ticket.Tipo.APERTURA
+    )
+    permitidos = (
+        Ticket.Estado.EN_PROCESO,
+        Ticket.Estado.ESPERANDO_PROVEEDOR,
+        Ticket.Estado.EN_PRUEBAS,
+        Ticket.Estado.REALIZADO,
+    )
+    if estado not in permitidos:
+        raise TransicionTicketError("Ese estado no pertenece al flujo de aperturas.")
+    if ticket.estado == Ticket.Estado.REALIZADO:
+        raise TransicionTicketError("Una apertura realizada ya no puede modificarse.")
+    if ticket.estado == estado:
+        raise TransicionTicketError("La apertura ya se encuentra en ese estado.")
+
+    estado_anterior = ticket.estado
+    ticket.estado = estado
+    campos = ["estado", "fecha_modificacion"]
+    if estado == Ticket.Estado.REALIZADO:
+        ticket.fecha_resolucion = timezone.now()
+        ticket.resuelto_por = usuario
+        campos.extend(("fecha_resolucion", "resuelto_por"))
+    ticket.save(update_fields=campos)
+    crear_movimiento_historial(
+        ticket=ticket,
+        usuario=usuario,
+        tipo_movimiento=HistorialTicket.TipoMovimiento.CAMBIO_ESTADO,
+        comentario=comentario or f"Estado cambiado de {estado_anterior} a {estado}.",
+        estado_anterior=estado_anterior,
+        estado_nuevo=estado,
+    )
+    return ticket
+
+
+@transaction.atomic
 def asignar_ticket(ticket, tecnico, usuario):
     from .models import HistorialTicket, Ticket
 
