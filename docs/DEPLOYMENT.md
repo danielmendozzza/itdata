@@ -72,6 +72,34 @@ La aplicación quedará disponible en:
 http://IP_DEL_SERVIDOR
 ```
 
+## Instalación desde el archivo TAR
+
+Un solo archivo TAR puede contener varias imágenes. `itdata-images.tar`
+incluye `itdata-backend:latest`, `itdata-web:latest` y
+`postgres:17-alpine`.
+
+Importarlas:
+
+```bash
+docker load -i itdata-images.tar
+```
+
+Levantar sin compilar y sin necesitar el código fuente:
+
+```bash
+docker compose -f compose.images.yml up -d
+```
+
+Para actualizar desde otro TAR:
+
+```bash
+docker compose -f compose.images.yml down
+docker load -i itdata-images.tar
+docker compose -f compose.images.yml up -d
+```
+
+No agregar `-v` al comando `down`, porque eliminaría la base de datos.
+
 ## Actualizaciones posteriores
 
 ```bash

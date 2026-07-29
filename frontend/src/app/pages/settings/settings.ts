@@ -41,7 +41,7 @@ export class SettingsPage implements OnInit {
 
   readonly form = this.fb.group({
     username: ['', Validators.required],
-    password: [''],
+    password: ['', Validators.minLength(8)],
     first_name: ['', Validators.required],
     last_name: [''],
     email: ['', Validators.email],
@@ -234,7 +234,10 @@ export class SettingsPage implements OnInit {
       : this.api.crearUsuario(datos);
     request.subscribe({
       next: () => { this.formularioVisible.set(false); this.cargar(); },
-      error: () => { this.error.set('No se pudo guardar. Verificá el rol, contraseña y asignaciones.'); this.guardando.set(false); },
+      error: (e) => {
+        this.error.set(this.mensajeErrorUsuario(e?.error));
+        this.guardando.set(false);
+      },
       complete: () => this.guardando.set(false),
     });
   }
@@ -246,5 +249,30 @@ export class SettingsPage implements OnInit {
 
   textoRol(rol: string): string {
     return rol.replaceAll('_', ' ');
+  }
+
+  private mensajeErrorUsuario(error: unknown): string {
+    if (!error || typeof error !== 'object') {
+      return 'No se pudo guardar el usuario.';
+    }
+    const etiquetas: Record<string, string> = {
+      username: 'Usuario',
+      password: 'Contraseña',
+      first_name: 'Nombre',
+      email: 'Correo',
+      rol: 'Rol',
+      sucursal: 'Sucursal',
+      sucursales_asignadas: 'Sucursales asignadas',
+      non_field_errors: 'Validación',
+    };
+    const mensajes = Object.entries(error as Record<string, unknown>).flatMap(
+      ([campo, detalle]) => {
+        const items = Array.isArray(detalle) ? detalle : [detalle];
+        return items
+          .filter((item): item is string => typeof item === 'string')
+          .map((item) => `${etiquetas[campo] ?? campo}: ${item}`);
+      },
+    );
+    return mensajes.join(' · ') || 'No se pudo guardar el usuario.';
   }
 }
