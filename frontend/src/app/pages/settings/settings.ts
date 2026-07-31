@@ -5,7 +5,7 @@ import { Router } from '@angular/router';
 import { forkJoin } from 'rxjs';
 import { ApiService } from '../../core/api.service';
 import { AuthService } from '../../core/auth.service';
-import { ActivoGestion, CategoriaGestion, OpcionCatalogo, Rol, SubcategoriaGestion, UsuarioGestion } from '../../core/models';
+import { ActivoGestion, CategoriaGestion, OpcionCatalogo, Rol, SubcategoriaGestion, SucursalGestion, TipoActivoGestion, UsuarioGestion } from '../../core/models';
 
 @Component({
   selector: 'app-settings-page',
@@ -26,7 +26,9 @@ export class SettingsPage implements OnInit {
   readonly criticidades = signal<OpcionCatalogo[]>([]);
   readonly categoriasGestion = signal<CategoriaGestion[]>([]);
   readonly subcategoriasGestion = signal<SubcategoriaGestion[]>([]);
-  readonly seccion = signal<'usuarios' | 'activos' | 'categorias'>('usuarios');
+  readonly sucursalesGestion = signal<SucursalGestion[]>([]);
+  readonly tiposActivoGestion = signal<TipoActivoGestion[]>([]);
+  readonly seccion = signal<'usuarios' | 'activos' | 'maestros' | 'categorias'>('usuarios');
   readonly cargando = signal(true);
   readonly guardando = signal(false);
   readonly formularioVisible = signal(false);
@@ -36,6 +38,8 @@ export class SettingsPage implements OnInit {
   readonly editandoActivoId = signal<string | null>(null);
   readonly editandoCategoriaId = signal<string | null>(null);
   readonly editandoSubcategoriaId = signal<string | null>(null);
+  readonly editandoSucursalId = signal<string | null>(null);
+  readonly editandoTipoActivoId = signal<string | null>(null);
   search = '';
   searchActivo = '';
 
@@ -68,6 +72,15 @@ export class SettingsPage implements OnInit {
   readonly formSubcategoria = this.fb.group({
     categoria: ['', Validators.required], nombre: ['', Validators.required],
     descripcion: [''], activo: [true],
+  });
+
+  readonly formSucursal = this.fb.group({
+    codigo: ['', Validators.required], nombre: ['', Validators.required],
+    direccion: [''], telefono: [''], encargado: [''], activo: [true],
+  });
+
+  readonly formTipoActivo = this.fb.group({
+    nombre: ['', Validators.required], descripcion: [''], activo: [true],
   });
 
   get rolesDisponibles(): Array<{ value: Rol; label: string }> {
@@ -113,12 +126,80 @@ export class SettingsPage implements OnInit {
     });
   }
 
-  cambiarSeccion(seccion: 'usuarios' | 'activos' | 'categorias'): void {
+  cambiarSeccion(seccion: 'usuarios' | 'activos' | 'maestros' | 'categorias'): void {
     this.seccion.set(seccion);
     this.error.set('');
     if (seccion === 'activos') this.cargarActivos();
+    else if (seccion === 'maestros') this.cargarMaestros();
     else if (seccion === 'categorias') this.cargarCategoriasGestion();
     else this.cargar();
+  }
+
+  cargarMaestros(): void {
+    this.cargando.set(true);
+    forkJoin({
+      sucursales: this.api.sucursalesGestion(),
+      tipos: this.api.tiposActivoGestion(),
+    }).subscribe({
+      next: ({ sucursales, tipos }) => {
+        this.sucursalesGestion.set(sucursales.results);
+        this.sucursales.set(sucursales.results);
+        this.tiposActivoGestion.set(tipos);
+        this.tiposActivo.set(tipos.filter((item) => item.activo));
+      },
+      complete: () => this.cargando.set(false),
+      error: () => this.cargando.set(false),
+    });
+  }
+
+  editarSucursal(item?: SucursalGestion): void {
+    this.editandoSucursalId.set(item?.id ?? null);
+    this.formSucursal.reset({
+      codigo: item?.codigo ?? '', nombre: item?.nombre ?? '',
+      direccion: item?.direccion ?? '', telefono: item?.telefono ?? '',
+      encargado: item?.encargado ?? '', activo: item?.activo ?? true,
+    });
+  }
+
+  guardarSucursal(): void {
+    if (this.formSucursal.invalid || this.guardando()) return;
+    this.guardando.set(true); this.error.set('');
+    const id = this.editandoSucursalId();
+    const peticion = id
+      ? this.api.actualizarSucursal(id, this.formSucursal.getRawValue())
+      : this.api.crearSucursal(this.formSucursal.getRawValue());
+    peticion.subscribe({
+      next: () => { this.editarSucursal(); this.cargarMaestros(); },
+      error: (e) => { this.error.set(e?.error?.codigo?.[0] ?? 'No se pudo guardar la sucursal.'); this.guardando.set(false); },
+      complete: () => this.guardando.set(false),
+    });
+  }
+
+  editarTipoActivo(item?: TipoActivoGestion): void {
+    this.editandoTipoActivoId.set(item?.id ?? null);
+    this.formTipoActivo.reset({
+      nombre: item?.nombre ?? '', descripcion: item?.descripcion ?? '',
+      activo: item?.activo ?? true,
+    });
+  }
+
+  guardarTipoActivo(): void {
+    if (this.formTipoActivo.invalid || this.guardando()) return;
+    this.guardando.set(true); this.error.set('');
+    const id = this.editandoTipoActivoId();
+    const peticion = id
+      ? this.api.actualizarTipoActivo(id, this.formTipoActivo.getRawValue())
+      : this.api.crearTipoActivo(this.formTipoActivo.getRawValue());
+    peticion.subscribe({
+      next: () => { this.editarTipoActivo(); this.cargarMaestros(); },
+      error: (e) => { this.error.set(e?.error?.nombre?.[0] ?? 'No se pudo guardar el tipo de activo.'); this.guardando.set(false); },
+      complete: () => this.guardando.set(false),
+    });
+  }
+
+  desactivarTipoActivo(item: TipoActivoGestion): void {
+    if (!confirm(`¿Desactivar el tipo de activo ${item.nombre}?`)) return;
+    this.api.desactivarTipoActivo(item.id).subscribe(() => this.cargarMaestros());
   }
 
   cargarCategoriasGestion(): void {

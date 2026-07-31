@@ -12,7 +12,18 @@ class CriticidadSerializer(serializers.ModelSerializer):
 class TipoActivoSerializer(serializers.ModelSerializer):
     class Meta:
         model = TipoActivo
-        fields = ("id", "nombre", "descripcion")
+        fields = ("id", "nombre", "descripcion", "activo")
+
+    def validate_nombre(self, value):
+        nombre = value.strip()
+        queryset = TipoActivo.objects.filter(nombre__iexact=nombre)
+        if self.instance:
+            queryset = queryset.exclude(pk=self.instance.pk)
+        if queryset.exists():
+            raise serializers.ValidationError(
+                "Ya existe un tipo de activo con este nombre."
+            )
+        return nombre
 
 
 class ActivoSerializer(serializers.ModelSerializer):

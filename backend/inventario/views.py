@@ -3,7 +3,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
 from .models import Activo, Criticidad, TipoActivo
-from .permissions import PuedeAdministrarActivos
+from .permissions import PuedeAdministrarActivos, PuedeAdministrarTiposActivo
 from .serializers import ActivoCatalogoSerializer, ActivoSerializer, CriticidadSerializer, TipoActivoSerializer
 from usuarios.models import Usuario
 
@@ -17,13 +17,22 @@ class CriticidadViewSet(viewsets.ReadOnlyModelViewSet):
         return Criticidad.objects.filter(activo=True)
 
 
-class TipoActivoViewSet(viewsets.ReadOnlyModelViewSet):
+class TipoActivoViewSet(viewsets.ModelViewSet):
     serializer_class = TipoActivoSerializer
-    permission_classes = (PuedeAdministrarActivos,)
+    permission_classes = (PuedeAdministrarTiposActivo,)
     pagination_class = None
 
     def get_queryset(self):
-        return TipoActivo.objects.filter(activo=True)
+        queryset = TipoActivo.objects.all()
+        if self.request.query_params.get("todos") != "true":
+            queryset = queryset.filter(activo=True)
+        return queryset
+
+    def destroy(self, request, *args, **kwargs):
+        tipo = self.get_object()
+        tipo.activo = False
+        tipo.save(update_fields=("activo",))
+        return Response(status=204)
 
 
 class ActivoViewSet(viewsets.ModelViewSet):

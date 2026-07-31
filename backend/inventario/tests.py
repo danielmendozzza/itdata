@@ -57,6 +57,22 @@ class AdministracionActivosApiTests(TestCase):
         response = self.client.post("/api/v1/configuracion/activos/", self.payload)
         self.assertEqual(response.status_code, 403)
 
+    def test_admin_puede_crear_tipo_activo(self):
+        self.client.force_authenticate(self.admin)
+        response = self.client.post(
+            "/api/v1/catalogos/tipos-activo/",
+            {"nombre": "Impresora", "descripcion": "Equipos de impresión"},
+        )
+        self.assertEqual(response.status_code, 201)
+        self.assertTrue(TipoActivo.objects.filter(nombre="Impresora").exists())
+
+    def test_supervisor_no_puede_crear_tipo_activo(self):
+        self.client.force_authenticate(self.supervisor)
+        response = self.client.post(
+            "/api/v1/catalogos/tipos-activo/", {"nombre": "Router"}
+        )
+        self.assertEqual(response.status_code, 403)
+
     def test_eliminar_desactiva_sin_borrar_historial(self):
         activo = Activo.objects.create(
             codigo="NB-003", nombre="Equipo", tipo_activo=self.tipo,

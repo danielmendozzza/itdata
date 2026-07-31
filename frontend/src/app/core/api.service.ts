@@ -10,7 +10,9 @@ import {
   ReporteTicketsData,
   OpcionCatalogo,
   Pagina,
+  SucursalGestion,
   TicketDetalle,
+  TipoActivoGestion,
   TicketLista,
   UsuarioGestion,
 } from './models';
@@ -117,6 +119,20 @@ export class ApiService {
     return this.http.get<Pagina<OpcionCatalogo>>(`${this.base}/sucursales/`, {
       params: new HttpParams().set('page_size', '100'),
     });
+  }
+
+  sucursalesGestion() {
+    return this.http.get<Pagina<SucursalGestion>>(`${this.base}/sucursales/`, {
+      params: new HttpParams().set('page_size', '100'),
+    });
+  }
+
+  crearSucursal(datos: Record<string, unknown>) {
+    return this.http.post<SucursalGestion>(`${this.base}/sucursales/`, datos);
+  }
+
+  actualizarSucursal(id: string, datos: Record<string, unknown>) {
+    return this.http.patch<SucursalGestion>(`${this.base}/sucursales/${id}/`, datos);
   }
 
   categorias() {
@@ -232,6 +248,24 @@ export class ApiService {
 
   tiposActivo() {
     return this.http.get<OpcionCatalogo[]>(`${this.base}/catalogos/tipos-activo/`);
+  }
+
+  tiposActivoGestion() {
+    return this.http.get<TipoActivoGestion[]>(`${this.base}/catalogos/tipos-activo/`, {
+      params: new HttpParams().set('todos', 'true'),
+    });
+  }
+
+  crearTipoActivo(datos: Record<string, unknown>) {
+    return this.http.post<TipoActivoGestion>(`${this.base}/catalogos/tipos-activo/`, datos);
+  }
+
+  actualizarTipoActivo(id: string, datos: Record<string, unknown>) {
+    return this.http.patch<TipoActivoGestion>(`${this.base}/catalogos/tipos-activo/${id}/`, datos);
+  }
+
+  desactivarTipoActivo(id: string) {
+    return this.http.delete<void>(`${this.base}/catalogos/tipos-activo/${id}/`);
   }
 
   criticidades() {

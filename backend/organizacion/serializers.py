@@ -10,6 +10,9 @@ class SucursalListSerializer(serializers.ModelSerializer):
             "id",
             "codigo",
             "nombre",
+            "direccion",
+            "telefono",
+            "encargado",
             "activo",
         ]
 

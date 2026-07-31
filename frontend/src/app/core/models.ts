@@ -134,6 +134,23 @@ export interface OpcionCatalogo {
   categoria?: string;
 }
 
+export interface SucursalGestion {
+  id: string;
+  codigo: string;
+  nombre: string;
+  direccion: string;
+  telefono: string;
+  encargado: string;
+  activo: boolean;
+}
+
+export interface TipoActivoGestion {
+  id: string;
+  nombre: string;
+  descripcion: string;
+  activo: boolean;
+}
+
 export interface UsuarioGestion {
   id: string;
   username: string;
