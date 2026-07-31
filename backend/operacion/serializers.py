@@ -277,6 +277,7 @@ class ReporteTicketsResponseSerializer(serializers.Serializer):
     tiempo_promedio_resolucion_segundos = serializers.FloatField(
         allow_null=True
     )
+    comparativa_mensual = serializers.DictField()
 
 
 class DashboardGeneralResponseSerializer(serializers.Serializer):

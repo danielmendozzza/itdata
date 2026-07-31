@@ -1,5 +1,6 @@
 import { ChangeDetectionStrategy, Component, OnInit, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { DecimalPipe } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { forkJoin } from 'rxjs';
 import { ApiService } from '../../core/api.service';
@@ -12,7 +13,7 @@ import {
 
 @Component({
   selector: 'app-management-dashboard-page',
-  imports: [FormsModule, RouterLink, PlotlyChartComponent],
+  imports: [FormsModule, DecimalPipe, RouterLink, PlotlyChartComponent],
   templateUrl: './management-dashboard.html',
   styleUrls: ['./management-dashboard.scss', './management-dashboard-modal.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -25,12 +26,14 @@ export class ManagementDashboardPage implements OnInit {
   readonly tecnicos = signal<Array<{ id: string; username: string; nombre_completo: string }>>([]);
   readonly cargando = signal(true);
   readonly error = signal('');
-  readonly graficoExpandido = signal<'evolucion' | 'estados' | null>(null);
+  readonly graficoExpandido = signal<'evolucion' | 'estados' | 'incidentes-mes' | 'sucursales-mes' | 'tiempo-ti' | 'tiempo-terceros' | null>(null);
+  readonly graficoComparativo = signal<'incidentes-mes' | 'sucursales-mes' | 'tiempo-ti' | 'tiempo-terceros'>('incidentes-mes');
   fechaDesde = '';
   fechaHasta = '';
   sucursal = '';
   tecnico = '';
   estado = '';
+  meses = '12';
 
   ngOnInit(): void {
     const hasta = new Date();
@@ -56,6 +59,7 @@ export class ManagementDashboardPage implements OnInit {
       sucursal: this.sucursal,
       tecnico_asignado: this.tecnico,
       estado: this.estado,
+      meses: this.meses,
     };
     forkJoin({
       resumen: this.api.dashboardGestion(filtros),
@@ -82,6 +86,22 @@ export class ManagementDashboardPage implements OnInit {
 
   etiqueta(valor: string | null): string {
     return (valor || 'Sin asignar').replaceAll('_', ' ').toLowerCase();
+  }
+
+  variacionIncidentes(): number | null {
+    const serie = this.reporte()?.comparativa_mensual.serie ?? [];
+    if (serie.length < 2) return null;
+    const actual = serie.at(-1)!.incidentes;
+    const anterior = serie.at(-2)!.incidentes;
+    if (!anterior) return actual ? 100 : 0;
+    return ((actual - anterior) / anterior) * 100;
+  }
+
+  formatoTiempo(segundos: number | null): string {
+    if (segundos === null) return 'Sin datos';
+    const horas = segundos / 3600;
+    if (horas < 24) return `${horas.toFixed(1)} h`;
+    return `${(horas / 24).toFixed(1)} días`;
   }
 
   private fechaLocal(fecha: Date): string {

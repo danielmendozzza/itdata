@@ -111,6 +111,17 @@ export interface ReporteTicketsData {
   por_categoria: Array<{ categoria__nombre: string; total: number }>;
   por_tecnico: Array<{ tecnico_asignado__username: string | null; total: number }>;
   tiempo_promedio_resolucion_segundos: number | null;
+  comparativa_mensual: {
+    serie: Array<{
+      mes: string;
+      incidentes: number;
+      ti_promedio_segundos: number | null;
+      ti_mediana_segundos: number | null;
+      terceros_promedio_segundos: number | null;
+      terceros_mediana_segundos: number | null;
+    }>;
+    sucursales: Array<{ mes: string; sucursal: string; total: number }>;
+  };
 }
 
 export interface ArticuloConocimiento {

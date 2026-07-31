@@ -23,6 +23,9 @@
       <span>MEMORIA TECNICA</span>
       <p>Informacion util para resolver incidencias.</p>
     </div>
+    <button class="theme-toggle" type="button" role="switch" [attr.aria-checked]="modoOscuro()" (click)="cambiarTema()">
+      <span>{{ modoOscuro() ? '☾' : '☀' }} Modo oscuro</span><i [class.active]="modoOscuro()"><b></b></i>
+    </button>
     <button class="logout" (click)="auth.cerrarSesion()">↪ Cerrar sesión</button>
   </aside>
 

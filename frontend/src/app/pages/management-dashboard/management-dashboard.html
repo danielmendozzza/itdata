@@ -13,6 +13,7 @@
   <label>Sucursal<select [(ngModel)]="sucursal"><option value="">Todas</option>@for (item of sucursales(); track item.id) {<option [value]="item.id">{{ item.nombre }}</option>}</select></label>
   <label>Técnico<select [(ngModel)]="tecnico"><option value="">Todos</option>@for (item of tecnicos(); track item.id) {<option [value]="item.id">{{ item.nombre_completo }}</option>}</select></label>
   <label>Estado<select [(ngModel)]="estado"><option value="">Todos</option><option value="NUEVO">Nuevo</option><option value="ASIGNADO">Asignado</option><option value="EN_PROCESO">En proceso</option><option value="PENDIENTE">Pendiente</option><option value="ESPERANDO_USUARIO">Esperando usuario</option><option value="ESPERANDO_PROVEEDOR">Esperando proveedor</option><option value="ESPERANDO_OTRA_AREA">Esperando otra área</option><option value="RESUELTO">Resuelto</option></select></label>
+  <label>Comparar<select [(ngModel)]="meses"><option value="3">Últimos 3 meses</option><option value="6">Últimos 6 meses</option><option value="12">Últimos 12 meses</option></select></label>
   <div class="filter-actions"><button class="primary-button" (click)="cargar()">Aplicar</button><button class="text-button" (click)="limpiar()">Limpiar</button></div>
 </section>
 
@@ -48,6 +49,26 @@
 }
 
 @if (reporte(); as r) {
+  @if (r.comparativa_mensual.serie.slice(-1)[0]; as ultimo) {
+    <section class="stats-grid monthly-stats">
+      <article class="stat-card primary"><span>INCIDENTES DEL MES</span><strong>{{ ultimo.incidentes }}</strong><small>{{ ultimo.mes }}</small></article>
+      <article class="stat-card" [class.trend-up]="(variacionIncidentes() ?? 0) > 0" [class.trend-down]="(variacionIncidentes() ?? 0) < 0"><span>VARIACIÓN MENSUAL</span><strong>{{ (variacionIncidentes() ?? 0) > 0 ? '+' : '' }}{{ variacionIncidentes() ?? 0 | number:'1.1-1' }}%</strong><small>Contra el mes anterior</small></article>
+      <article class="stat-card"><span>TIEMPO EFECTIVO TI</span><strong class="time">{{ formatoTiempo(ultimo.ti_mediana_segundos) }}</strong><small>Mediana desde que se toma</small></article>
+      <article class="stat-card waiting"><span>ESPERA DE TERCEROS</span><strong class="time">{{ formatoTiempo(ultimo.terceros_mediana_segundos) }}</strong><small>Mediana acumulada</small></article>
+    </section>
+  }
+  <section class="comparison-section">
+    <nav class="comparison-tabs" aria-label="Gráficas comparativas">
+      <button [class.active]="graficoComparativo() === 'incidentes-mes'" (click)="graficoComparativo.set('incidentes-mes')">Incidentes</button>
+      <button [class.active]="graficoComparativo() === 'sucursales-mes'" (click)="graficoComparativo.set('sucursales-mes')">Sucursales</button>
+      <button [class.active]="graficoComparativo() === 'tiempo-ti'" (click)="graficoComparativo.set('tiempo-ti')">Tiempo TI</button>
+      <button [class.active]="graficoComparativo() === 'tiempo-terceros'" (click)="graficoComparativo.set('tiempo-terceros')">Espera de terceros</button>
+    </nav>
+    @if (graficoComparativo() === 'incidentes-mes') {<article class="panel chart-panel comparison-chart" [class.chart-expanded]="graficoExpandido() === 'incidentes-mes'" (click)="graficoExpandido.set('incidentes-mes')">@if (graficoExpandido() === 'incidentes-mes') {<button class="chart-close" (click)="$event.stopPropagation(); graficoExpandido.set(null)" aria-label="Cerrar">×</button>}<p class="eyebrow">TENDENCIA</p><h2>Incidentes creados por mes</h2><app-plotly-chart kind="incidentes-mes" [comparativa]="r.comparativa_mensual" [expanded]="graficoExpandido() === 'incidentes-mes'" /></article>}
+    @if (graficoComparativo() === 'sucursales-mes') {<article class="panel chart-panel comparison-chart" [class.chart-expanded]="graficoExpandido() === 'sucursales-mes'" (click)="graficoExpandido.set('sucursales-mes')">@if (graficoExpandido() === 'sucursales-mes') {<button class="chart-close" (click)="$event.stopPropagation(); graficoExpandido.set(null)" aria-label="Cerrar">×</button>}<p class="eyebrow">SUCURSALES</p><h2>Problemas por mes · Top 5</h2><app-plotly-chart kind="sucursales-mes" [comparativa]="r.comparativa_mensual" [expanded]="graficoExpandido() === 'sucursales-mes'" /></article>}
+    @if (graficoComparativo() === 'tiempo-ti') {<article class="panel chart-panel comparison-chart" [class.chart-expanded]="graficoExpandido() === 'tiempo-ti'" (click)="graficoExpandido.set('tiempo-ti')">@if (graficoExpandido() === 'tiempo-ti') {<button class="chart-close" (click)="$event.stopPropagation(); graficoExpandido.set(null)" aria-label="Cerrar">×</button>}<p class="eyebrow">EFICIENCIA</p><h2>Tiempo efectivo de TI</h2><app-plotly-chart kind="tiempo-ti" [comparativa]="r.comparativa_mensual" [expanded]="graficoExpandido() === 'tiempo-ti'" /></article>}
+    @if (graficoComparativo() === 'tiempo-terceros') {<article class="panel chart-panel comparison-chart" [class.chart-expanded]="graficoExpandido() === 'tiempo-terceros'" (click)="graficoExpandido.set('tiempo-terceros')">@if (graficoExpandido() === 'tiempo-terceros') {<button class="chart-close" (click)="$event.stopPropagation(); graficoExpandido.set(null)" aria-label="Cerrar">×</button>}<p class="eyebrow">DEPENDENCIAS EXTERNAS</p><h2>Tiempo esperando a terceros</h2><app-plotly-chart kind="tiempo-terceros" [comparativa]="r.comparativa_mensual" [expanded]="graficoExpandido() === 'tiempo-terceros'" /></article>}
+  </section>
   <section class="breakdowns">
     <article class="panel"><p class="eyebrow">DEMANDA</p><h2>Top sucursales</h2><div class="rank-list">@for (item of r.por_sucursal.slice(0, 10); track item.sucursal__nombre) {<div><span>{{ item.sucursal__nombre }}</span><strong>{{ item.total }}</strong></div>} @empty {<p class="empty">Sin datos.</p>}</div></article>
     <article class="panel"><p class="eyebrow">CAUSAS</p><h2>Tickets por categoría</h2><div class="rank-list">@for (item of r.por_categoria.slice(0, 10); track item.categoria__nombre) {<div><span>{{ item.categoria__nombre }}</span><strong>{{ item.total }}</strong></div>} @empty {<p class="empty">Sin datos.</p>}</div></article>

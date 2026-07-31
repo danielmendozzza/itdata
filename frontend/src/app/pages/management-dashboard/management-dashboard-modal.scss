@@ -8,6 +8,25 @@
   border-color: #b9e4ce;
 }
 .stat-card.opening-done strong { color: #17734a; }
+:host-context([data-theme="dark"]) .stat-card.primary {
+  background: linear-gradient(145deg, #142b3d, #173d5b);
+  border-color: #28485f;
+}
+:host-context([data-theme="dark"]) .stat-card.primary span,
+:host-context([data-theme="dark"]) .stat-card.primary small { color: #8eacc4; }
+:host-context([data-theme="dark"]) .stat-card.primary strong { color: #f3f7fa; }
+:host-context([data-theme="dark"]) .stat-card.opening-pending,
+:host-context([data-theme="dark"]) .stat-card.waiting {
+  background: #29251c;
+  border-color: #51452e;
+}
+:host-context([data-theme="dark"]) .stat-card.opening-pending strong,
+:host-context([data-theme="dark"]) .stat-card.waiting strong { color: #d5ad58; }
+:host-context([data-theme="dark"]) .stat-card.opening-done {
+  background: #172c27;
+  border-color: #2c4c42;
+}
+:host-context([data-theme="dark"]) .stat-card.opening-done strong { color: #69c399; }
 .chart-panel {
   cursor: zoom-in;
   transition: transform .2s ease, box-shadow .2s ease;
@@ -69,4 +88,54 @@
     min-height: auto;
     padding: 1.15rem;
   }
+}
+
+.filters { grid-template-columns: repeat(6, minmax(110px, 1fr)) auto; }
+.monthly-stats { grid-template-columns: repeat(4, 1fr); margin-top: 1rem; }
+.monthly-charts {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+.trend-up strong { color: #b14d3b; }
+.trend-down strong { color: #178457; }
+.stat-card.waiting { background: #fff8e8; border-color: #f1d69d; }
+.stat-card.waiting strong { color: #9a630d; }
+.comparison-section { margin-bottom: 1rem; }
+.comparison-tabs {
+  display: flex;
+  gap: .45rem;
+  padding: .45rem;
+  margin-bottom: .75rem;
+  overflow-x: auto;
+  background: var(--surface-strong);
+  border: 1px solid var(--blue-border);
+  border-radius: .85rem;
+}
+.comparison-tabs button {
+  flex: 1 0 max-content;
+  padding: .7rem 1rem;
+  border: 0;
+  border-radius: .6rem;
+  background: transparent;
+  color: var(--slate-500);
+  font-size: .72rem;
+  font-weight: 800;
+  cursor: pointer;
+}
+.comparison-tabs button.active {
+  background: var(--surface);
+  color: var(--blue-650);
+  box-shadow: var(--shadow-sm);
+}
+.comparison-chart { width: 100%; }
+
+@media (max-width: 1200px) {
+  .monthly-stats { grid-template-columns: repeat(3, 1fr); }
+  .filters { grid-template-columns: repeat(3, 1fr); }
+}
+
+@media (max-width: 750px) {
+  .monthly-stats, .monthly-charts { grid-template-columns: 1fr; }
 }

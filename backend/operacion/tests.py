@@ -268,6 +268,45 @@ class TicketApiTests(TestCase):
 		self.assertEqual(response.data["total"], 1)
 		self.assertEqual(response.data["por_estado"][0]["estado"], reciente.estado)
 
+	def test_reporte_calcula_comparativa_mensual_y_tiempos_operativos(self):
+		ahora = timezone.now()
+		ticket = self.crear_ticket_reporte(Ticket.Estado.RESUELTO)
+		Ticket.objects.filter(pk=ticket.pk).update(
+			tecnico_asignado=self.tecnico,
+			fecha_toma=ahora - timedelta(hours=4),
+			fecha_resolucion=ahora,
+		)
+		espera = HistorialTicket.objects.create(
+			ticket=ticket,
+			usuario=self.tecnico,
+			tipo_movimiento=HistorialTicket.TipoMovimiento.CAMBIO_ESTADO,
+			estado_anterior=Ticket.Estado.EN_PROCESO,
+			estado_nuevo=Ticket.Estado.ESPERANDO_PROVEEDOR,
+			comentario="Esperando repuesto",
+		)
+		resolucion = HistorialTicket.objects.create(
+			ticket=ticket,
+			usuario=self.tecnico,
+			tipo_movimiento=HistorialTicket.TipoMovimiento.RESOLUCION,
+			estado_anterior=Ticket.Estado.ESPERANDO_PROVEEDOR,
+			estado_nuevo=Ticket.Estado.RESUELTO,
+			comentario="Resuelto",
+		)
+		HistorialTicket.objects.filter(pk=espera.pk).update(
+			fecha_creacion=ahora - timedelta(hours=2)
+		)
+		HistorialTicket.objects.filter(pk=resolucion.pk).update(fecha_creacion=ahora)
+
+		self.client.force_authenticate(self.supervisor)
+		response = self.client.get("/api/v1/reportes/tickets/?meses=3")
+		self.assertEqual(response.status_code, 200)
+		ultimo = response.data["comparativa_mensual"]["serie"][-1]
+		self.assertEqual(ultimo["incidentes"], 1)
+		self.assertAlmostEqual(ultimo["ti_mediana_segundos"], 7200, delta=2)
+		self.assertAlmostEqual(
+			ultimo["terceros_mediana_segundos"], 7200, delta=2
+		)
+
 	def test_dashboard_calcula_resumen(self):
 		self.crear_ticket_reporte(Ticket.Estado.NUEVO)
 		self.crear_ticket_reporte(Ticket.Estado.EN_PROCESO)

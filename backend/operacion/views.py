@@ -7,6 +7,9 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from django.db.models import Avg, Count, DurationField, ExpressionWrapper, F
 from django.db.models.functions import TruncDate
+from django.utils import timezone
+from datetime import date
+from statistics import median
 from drf_spectacular.types import OpenApiTypes
 from drf_spectacular.utils import OpenApiParameter, extend_schema
 from usuarios.models import Usuario
@@ -424,6 +427,116 @@ def _conteos(queryset, campo, etiqueta=None):
 	)
 
 
+def _sumar_meses(fecha, cantidad):
+	indice = fecha.year * 12 + fecha.month - 1 + cantidad
+	return date(indice // 12, indice % 12 + 1, 1)
+
+
+def _segundos_entre(inicio, fin):
+	return max(0, (fin - inicio).total_seconds())
+
+
+def _metricas_mensuales(request):
+	"""Compara cohortes de incidencias por mes de creacion."""
+	try:
+		meses = min(12, max(3, int(request.query_params.get("meses", 12))))
+	except (TypeError, ValueError):
+		meses = 12
+	try:
+		fecha_final = date.fromisoformat(
+			request.query_params.get("fecha_hasta", "")
+		) if request.query_params.get("fecha_hasta") else timezone.localdate()
+	except ValueError:
+		fecha_final = timezone.localdate()
+	ultimo_mes = fecha_final.replace(day=1)
+	primer_mes = _sumar_meses(ultimo_mes, -(meses - 1))
+	fin_exclusivo = _sumar_meses(ultimo_mes, 1)
+
+	parametros = request.query_params.copy()
+	parametros.pop("fecha_desde", None)
+	parametros.pop("fecha_hasta", None)
+	parametros.pop("meses", None)
+	queryset = selectors.obtener_tickets_visibles_para_usuario(request.user)
+	filtro = TicketFilter(parametros, queryset=queryset)
+	if not filtro.is_valid():
+		return None, filtro.errors
+	tickets = list(
+		filtro.qs.filter(
+			fecha_creacion__date__gte=primer_mes,
+			fecha_creacion__date__lt=fin_exclusivo,
+		).select_related("sucursal").prefetch_related("historial")
+	)
+
+	claves = [_sumar_meses(primer_mes, indice).strftime("%Y-%m") for indice in range(meses)]
+	datos = {
+		clave: {"mes": clave, "incidentes": 0, "ti": [], "terceros": []}
+		for clave in claves
+	}
+	sucursales = {}
+	estados_terceros = {
+		Ticket.Estado.ESPERANDO_PROVEEDOR,
+		Ticket.Estado.ESPERANDO_OTRA_AREA,
+	}
+	estados_fin_ti = estados_terceros | {Ticket.Estado.RESUELTO}
+	ahora = timezone.now()
+
+	for ticket in tickets:
+		clave = timezone.localtime(ticket.fecha_creacion).strftime("%Y-%m")
+		if clave not in datos:
+			continue
+		datos[clave]["incidentes"] += 1
+		nombre_sucursal = ticket.sucursal.nombre if ticket.sucursal else "Sin sucursal"
+		sucursales[(clave, nombre_sucursal)] = sucursales.get((clave, nombre_sucursal), 0) + 1
+		movimientos = sorted(ticket.historial.all(), key=lambda item: item.fecha_creacion)
+
+		if ticket.fecha_toma:
+			fin_ti = next(
+				(
+					mov.fecha_creacion for mov in movimientos
+					if mov.fecha_creacion >= ticket.fecha_toma
+					and mov.estado_nuevo in estados_fin_ti
+				),
+				ticket.fecha_resolucion,
+			)
+			if fin_ti:
+				datos[clave]["ti"].append(_segundos_entre(ticket.fecha_toma, fin_ti))
+
+		espera_total = 0
+		for indice, movimiento in enumerate(movimientos):
+			if movimiento.estado_nuevo not in estados_terceros:
+				continue
+			fin_espera = next(
+				(
+					siguiente.fecha_creacion
+					for siguiente in movimientos[indice + 1:]
+					if siguiente.estado_nuevo and siguiente.estado_nuevo != movimiento.estado_nuevo
+				),
+				ticket.fecha_resolucion or ahora,
+			)
+			espera_total += _segundos_entre(movimiento.fecha_creacion, fin_espera)
+		if espera_total:
+			datos[clave]["terceros"].append(espera_total)
+
+	serie = []
+	for clave in claves:
+		item = datos[clave]
+		tiempos_ti = item.pop("ti")
+		tiempos_terceros = item.pop("terceros")
+		item["ti_promedio_segundos"] = sum(tiempos_ti) / len(tiempos_ti) if tiempos_ti else None
+		item["ti_mediana_segundos"] = median(tiempos_ti) if tiempos_ti else None
+		item["terceros_promedio_segundos"] = sum(tiempos_terceros) / len(tiempos_terceros) if tiempos_terceros else None
+		item["terceros_mediana_segundos"] = median(tiempos_terceros) if tiempos_terceros else None
+		serie.append(item)
+
+	return {
+		"serie": serie,
+		"sucursales": [
+			{"mes": clave, "sucursal": sucursal, "total": total}
+			for (clave, sucursal), total in sorted(sucursales.items())
+		],
+	}, None
+
+
 class ReporteTicketsView(APIView):
 	permission_classes = (IsAuthenticated, PuedeVerReportes)
 
@@ -454,6 +567,10 @@ class ReporteTicketsView(APIView):
 			valor=Avg(duracion)
 		)["valor"]
 
+		mensual, errores_mensuales = _metricas_mensuales(request)
+		if errores_mensuales:
+			return Response(errores_mensuales, status=400)
+
 		return Response(
 			{
 				"total": queryset.count(),
@@ -466,6 +583,7 @@ class ReporteTicketsView(APIView):
 				"tiempo_promedio_resolucion_segundos": (
 					promedio.total_seconds() if promedio else None
 				),
+				"comparativa_mensual": mensual,
 			}
 		)
 
