@@ -225,3 +225,9 @@ CSRF_COOKIE_SECURE = SECURE_SSL_REDIRECT
 SECURE_HSTS_SECONDS = config("SECURE_HSTS_SECONDS", default=0, cast=int)
 SECURE_HSTS_INCLUDE_SUBDOMAINS = SECURE_HSTS_SECONDS > 0
 SECURE_HSTS_PRELOAD = SECURE_HSTS_SECONDS > 0
+
+# Microsoft Graph. Son opcionales hasta que una integración solicite un cliente.
+MS_GRAPH_TENANT_ID = config("MS_GRAPH_TENANT_ID", default="")
+MS_GRAPH_CLIENT_ID = config("MS_GRAPH_CLIENT_ID", default="")
+MS_GRAPH_CLIENT_SECRET = config("MS_GRAPH_CLIENT_SECRET", default="")
+MS_GRAPH_MAILBOX = config("MS_GRAPH_MAILBOX", default="")
